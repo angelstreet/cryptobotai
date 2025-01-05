@@ -77,7 +77,7 @@ async def run_trading_bot(args):
         }
     )
     
-    trading_agent = TradingAgent(openai_client=openai_client)
+    trading_agent = TradingAgent(openai_client=openai_client, config_name=args.agent_config)
     
     # Fetch more historical data for context in live trading
     market_data = await fetch_market_data(
@@ -125,7 +125,7 @@ async def run_trading_bot(args):
         }
         
         visualizer = TradingVisualizer(market_data, [mock_trade])
-        visualizer.plot_chart(use_unicorn=args.unicorn)
+        visualizer.plot_chart()
 
 async def run_backtest(args):
     load_dotenv()
@@ -150,7 +150,7 @@ async def run_backtest(args):
         }
     )
     
-    trading_agent = TradingAgent(openai_client=openai_client)
+    trading_agent = TradingAgent(openai_client=openai_client, config_name=args.agent_config)
     backtester = Backtester(initial_balance=Decimal(args.initial_balance))
     
     # Fetch historical data with date range
@@ -168,7 +168,7 @@ async def run_backtest(args):
     
     # Run backtest
     results = await backtester.run(trading_agent, market_data)
-    backtester.print_results(results, show_advanced=args.advanced, use_unicorn=args.unicorn)
+    backtester.print_results(results, show_advanced=args.advanced)
 
 def main():
     parser = argparse.ArgumentParser(description='Crypto AI Trading Bot')
@@ -182,9 +182,85 @@ def main():
     parser.add_argument('--end-date', type=str, help='End date for backtest (DD/MM/YYYY)')
     parser.add_argument('--initial-balance', type=float, default=10000, help='Initial balance for backtest')
     parser.add_argument('--advanced', action='store_true', help='Show advanced visualization')
-    parser.add_argument('--unicorn', action='store_true', help='Use unicorn terminal for visualization')
+    parser.add_argument('--agent-config', type=str, default='default', 
+                       choices=['default', 'conservative', 'aggressive'],
+                       help='Trading agent configuration to use')
+    parser.add_argument('--show-config', action='store_true',
+                       help='Show detailed configuration information and exit')
     
-    asyncio.run(run_trading_bot(parser.parse_args()))
+    args = parser.parse_args()
+    
+    if args.show_config:
+        print("""
+Trading Bot Configuration Guide:
+
+Available Agent Profiles:
+  - default: Balanced trading approach
+    • Min confidence: 60%
+    • Min price change: 1%
+    • Stop loss: 2%, Take profit: 3%
+    • Risk per trade: 2%
+    • Kelly factor: 0.5 (half-Kelly)
+
+  - conservative: Risk-averse strategy
+    • Min confidence: 80%
+    • Min price change: 2%
+    • Stop loss: 1%, Take profit: 2%
+    • Risk per trade: 1%
+    • Kelly factor: 0.25 (quarter-Kelly)
+
+  - aggressive: High-risk strategy
+    • Min confidence: 40%
+    • Min price change: 0.5%
+    • Stop loss: 5%, Take profit: 10%
+    • Risk per trade: 5%
+    • Kelly factor: 1.0 (full-Kelly)
+
+Configuration Parameters:
+  model: AI model used for analysis
+  temperature: Controls randomness (0.5-0.9)
+  max_tokens: Maximum response length
+  trading_params:
+    • min_confidence: Required confidence for trades
+    • max_position_size: Maximum trade size (0-1)
+    • min_price_change: Required price movement
+    • stop_loss: Stop loss percentage
+    • take_profit:
+        • Array of profit targets:
+            - level: Price target percentage
+            - size: Position fraction to close at target
+
+position_sizing:
+    • max_position_size: Maximum allocation per trade
+    • risk_per_trade: Maximum risk per trade (% of portfolio)
+    • kelly_factor: Fraction of Kelly Criterion to use
+    • units: Specify if values are in percent or USD
+       - position_size: "percent" (0.0-1.0) or "usd" (dollar amount)
+       - risk: "percent" (0.0-1.0) or "usd" (dollar amount)
+
+price_change_threshold:
+    • base: Default minimum price change required
+    • volatility_multiplier: Adjusts threshold based on market volatility
+    • min_threshold: Minimum allowed threshold
+    • max_threshold: Maximum allowed threshold
+
+stop_loss:
+    • initial: Initial stop-loss percentage
+    • trailing: Distance to maintain from highest price
+    • activation_threshold: Profit % needed to activate trailing
+
+time_exit:
+    • max_holding_period: Maximum time to hold a trade ("12h", "24h", "7d", etc., or null for unlimited)
+    • force_close_at: Daily times to close positions
+    • weekend_exit: Whether to exit before weekends
+
+Example Usage:
+  python main.py --symbol BTC/USDT --agent-config conservative
+  python main.py --symbol ETH/USDT --agent-config aggressive --advanced
+""")
+        return
+    
+    asyncio.run(run_trading_bot(args))
 
 if __name__ == "__main__":
     main() 

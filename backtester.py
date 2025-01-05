@@ -4,23 +4,77 @@ import pandas as pd
 from datetime import datetime
 from agent import TradingAgent
 from visualization import TradingVisualizer
+from config import AgentConfig
 
 class Backtester:
-    def __init__(self, 
-                 initial_balance: Decimal = Decimal('10000'),
-                 trading_fee: Decimal = Decimal('0.001')):  # 0.1% fee
+    def __init__(self, initial_balance: Decimal = Decimal('10000')):
         self.initial_balance = initial_balance
-        self.trading_fee = trading_fee
         self.trades = []
         self.daily_logs = []
         self.market_data = None
+        self.highest_price = None  # For trailing stop-loss
+        self.entry_time = None     # For time-based exits
         
+    def _check_exits(self, current_price: Decimal, current_time: datetime, 
+                     position: Decimal, entry_price: Decimal, config: AgentConfig) -> bool:
+        """Check if any exit conditions are met"""
+        if position == 0:
+            return False
+            
+        # Check stop loss
+        stop_loss = config.stop_loss
+        if self.highest_price:
+            # Trailing stop-loss if activated
+            if float(current_price) >= float(entry_price) * (1 + stop_loss["activation_threshold"]/100):
+                stop_price = self.highest_price * (1 - stop_loss["trailing"]/100)
+            else:
+                stop_price = entry_price * (1 - stop_loss["initial"]/100)
+            
+            if current_price <= stop_price:
+                return True
+                
+        # Check time-based exit
+        time_exit = config.time_exit
+        if time_exit["max_holding_period"] is not None:
+            holding_period = current_time - self.entry_time
+            max_period = pd.Timedelta(time_exit["max_holding_period"])
+            if holding_period >= max_period:
+                return True
+                
+        return False
+        
+    def _calculate_position_size(self, decision: Dict, current_price: Decimal, 
+                                balance: Decimal, config: AgentConfig) -> Decimal:
+        """Calculate position size based on configuration"""
+        position_config = config.position_sizing
+        units = position_config["units"]
+        
+        # Get base position size
+        if units["position_size"] == "percent":
+            base_size = Decimal(str(position_config["max_position_size"])) * balance
+        else:  # "usd"
+            base_size = Decimal(str(position_config["max_position_size"]))
+            
+        # Apply Kelly Criterion adjustment
+        kelly_size = base_size * Decimal(str(position_config["kelly_factor"]))
+        
+        # Apply risk per trade limit
+        if units["risk"] == "percent":
+            max_risk = balance * Decimal(str(position_config["risk_per_trade"]))
+        else:  # "usd"
+            max_risk = Decimal(str(position_config["risk_per_trade"]))
+            
+        risk_adjusted_size = min(kelly_size, max_risk * Decimal('20'))  # Assume 5% stop loss
+        
+        return min(risk_adjusted_size / current_price, 
+                  Decimal(str(decision["amount"])) * balance / current_price)
+
     async def run(self, agent: TradingAgent, market_data: pd.DataFrame) -> Dict:
         self.market_data = market_data
         balance = self.initial_balance
         position = Decimal('0')
-        max_balance = self.initial_balance
-        max_drawdown = Decimal('0')
+        entry_price = None
+        take_profit_levels = agent.config.take_profit_levels.copy()
         
         print("\nStarting backtest simulation...")
         print(f"Initial balance: ${float(self.initial_balance):.2f}")

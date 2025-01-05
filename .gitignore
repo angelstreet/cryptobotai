@@ -1,1 +1,5 @@
 .env
+__pycache__/agent.cpython-313.pyc
+__pycache__/backtester.cpython-313.pyc
+__pycache__/config.cpython-313.pyc
+__pycache__/visualization.cpython-313.pyc

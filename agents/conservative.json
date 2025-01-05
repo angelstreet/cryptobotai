@@ -1,0 +1,37 @@
+{
+    "model": "anthropic/claude-3-sonnet",
+    "temperature": 0.5,
+    "max_tokens": 200,
+    "prompt_template": "You are a conservative cryptocurrency trading assistant. Analyze the following market data and provide a cautious trading decision:\n\nCurrent Price: ${price}\nVolume: {volume}\n24h Change: {change_24h}%\n\nProvide your decision as:\n- Action (BUY/SELL/HOLD)\n- Position size (0.0-0.1)\n- Confidence (0-100%)\n- Brief reasoning\n\nAnalysis:",
+    "trading_params": {
+        "min_confidence": 80,
+        "take_profit": [
+            {"level": 1.0, "size": 0.6},
+            {"level": 2.0, "size": 0.3},
+            {"level": 3.0, "size": 0.1}
+        ]
+    },
+    "time_exit": {
+        "max_holding_period": "12h"
+    },
+    "stop_loss": {
+        "initial": 1.0,
+        "trailing": 0.5,
+        "activation_threshold": 1.0
+    },
+    "price_change_threshold": {
+        "base": 2.0,
+        "volatility_multiplier": 0.75,
+        "min_threshold": 1.0,
+        "max_threshold": 4.0
+    },
+    "position_sizing": {
+        "max_position_size": 0.1,
+        "risk_per_trade": 0.01,
+        "kelly_factor": 0.25,
+        "units": {
+            "position_size": "percent",
+            "risk": "percent"
+        }
+    }
+}

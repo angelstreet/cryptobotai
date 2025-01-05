@@ -1,0 +1,37 @@
+{
+    "model": "anthropic/claude-3-sonnet",
+    "temperature": 0.9,
+    "max_tokens": 200,
+    "prompt_template": "You are an aggressive cryptocurrency trading assistant. Analyze the following market data and provide a high-risk trading decision:\n\nCurrent Price: ${price}\nVolume: {volume}\n24h Change: {change_24h}%\n\nProvide your decision as:\n- Action (BUY/SELL/HOLD)\n- Position size (0.0-0.5)\n- Confidence (0-100%)\n- Brief reasoning\n\nAnalysis:",
+    "trading_params": {
+        "min_confidence": 40,
+        "take_profit": [
+            {"level": 5.0, "size": 0.4},
+            {"level": 10.0, "size": 0.4},
+            {"level": 15.0, "size": 0.2}
+        ]
+    },
+    "time_exit": {
+        "max_holding_period": "24h"
+    },
+    "stop_loss": {
+        "initial": 5.0,
+        "trailing": 2.0,
+        "activation_threshold": 3.0
+    },
+    "price_change_threshold": {
+        "base": 0.5,
+        "volatility_multiplier": 1.5,
+        "min_threshold": 0.25,
+        "max_threshold": 2.0
+    },
+    "position_sizing": {
+        "max_position_size": 0.5,
+        "risk_per_trade": 0.05,
+        "kelly_factor": 1.0,
+        "units": {
+            "position_size": "percent",
+            "risk": "percent"
+        }
+    }
+} 

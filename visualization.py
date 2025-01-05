@@ -146,7 +146,7 @@ class TradingVisualizer:
         self.console.print("\n")
         self.console.print(table)
 
-    def plot_chart(self, use_unicorn: bool = False):
+    def plot_chart(self):
         """Display complete trading visualization"""
         self.print_trade_summary()
         self.plot_ascii_candlesticks() 
