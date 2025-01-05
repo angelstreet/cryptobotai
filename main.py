@@ -63,6 +63,11 @@ async def fetch_market_data(
         return pd.DataFrame()
 
 async def run_trading_bot(args):
+    # Show header first
+    console.print("\n" + "=" * 50, style="header")
+    console.print(f"TRADING ANALYSIS FOR {args.symbol}", style="header")
+    console.print("=" * 50, style="header")
+    
     if args.backtest:
         await run_backtest(args)
         return
@@ -162,6 +167,11 @@ async def run_trading_bot(args):
         visualizer.plot_chart()
 
 async def run_backtest(args):
+    # Show header first
+    console.print("\n" + "=" * 50, style="header")
+    console.print(f"TRADING ANALYSIS FOR {args.symbol}", style="header")
+    console.print("=" * 50, style="header")
+    
     load_dotenv()
     
     # Parse dates if provided

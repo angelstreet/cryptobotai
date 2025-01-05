@@ -14,6 +14,7 @@ class TradingAgent:
         self.current_position = 0.0  # Track current position size
         self.entries = []  # List of dicts containing entry prices and amounts
         self.debug = False  # Debug mode flag
+        self.console = self.config.console
         
     def set_debug(self, debug: bool):
         """Enable or disable debug mode"""
@@ -66,6 +67,17 @@ class TradingAgent:
             if len(self.historical_data) > 24:  # Keep last 24 periods
                 self.historical_data.pop(0)
             
+            # Prepare debug string
+            debug_str = ""
+            if self.debug:
+                # Use info style for candle data, config color only for the config name
+                debug_str = (
+                    f"{'\nCANDLE':<8} | "
+                    f"[dim]Price: [/]${market_data['price']:<10,.2f} | "
+                    f"[dim]Change: [/]{market_data['change_24h']:>+7.4f}% | "
+                    f"[dim]Vol: [/]{market_data['volume']:<8.2f}"
+                )
+            
             # Check price change threshold
             threshold_config = self.config.price_change_threshold
             base_threshold = threshold_config["base"]
@@ -77,16 +89,17 @@ class TradingAgent:
             required_change = max(threshold_config["min_threshold"], 
                                 min(required_change, threshold_config["max_threshold"]))
             
-            # Debug logging if enabled
             if self.debug:
-                print(f"\nPrice Analysis:")
-                print(f"Current change: {market_data['change_24h']:.4f}%")
-                print(f"Required change: {required_change:.4f}%")
-                print(f"Volatility adjustment: {volatility_adjustment:.2f}")
+                debug_str += (
+                    f" | [dim]Req:[/] {required_change:>6.4f}% "
+                    f"([dim]Base:[/] {base_threshold:<6.4f}% × "
+                    f"[dim]Vol:[/] {volatility_adjustment:<4.2f})"
+                )
             
             if abs(market_data["change_24h"]) < required_change:
-                return self._get_default_decision(
+                decision = self._get_default_decision(
                     f"Price change ({market_data['change_24h']:.3f}%) below dynamic threshold ({required_change:.3f}%)")
+                return decision
             
             # Format prompt with market data
             prompt = self.config.prompt_template.format(
@@ -125,6 +138,10 @@ class TradingAgent:
             # Apply trading parameters
             decision = self._apply_trading_params(decision, market_data)
             
+            # Print debug info after decision is made
+            if self.debug and debug_str:
+                self.console.print(debug_str)
+            
             return decision
             
         except Exception as e:
@@ -144,10 +161,15 @@ class TradingAgent:
         
         try:
             if "below dynamic threshold" in reason.lower():
-                # Extract values from the error message
-                parts = reason.split("(")
-                price_change = float(parts[1].split("%")[0])
-                threshold = float(parts[2].split("%")[0])
+                # Use regex to extract numbers, handling negative values
+                price_match = re.search(r"change \(([-\d.]+)%\)", reason)
+                threshold_match = re.search(r"threshold \(([-\d.]+)%\)", reason)
+                
+                if price_match and threshold_match:
+                    price_change = float(price_match.group(1))
+                    threshold = float(threshold_match.group(1))
+                else:
+                    raise ValueError("Could not parse price change values")
                 
                 if abs(price_change) < 0.001:
                     decision["reasoning"] = (

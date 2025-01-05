@@ -2,11 +2,26 @@ import json
 import os
 from typing import Dict, Any, List
 from dotenv import load_dotenv
+from rich.console import Console
+from rich.theme import Theme
 
 class AgentConfig:
     def __init__(self, config_name: str = "default"):
         load_dotenv()
         self.config_name = config_name
+        self.console = Console(theme=Theme({
+            "warning": "yellow",
+            "info": "blue",
+            "header": "bold white",
+            "aggressive": "red3",
+            "conservative": "bold blue",
+            "default": "dim white"
+        }))
+        self.color_style = {
+            "aggressive": "aggressive",
+            "conservative": "conservative",
+            "default": "default"
+        }.get(config_name, "default")
         self.default_config = {
             "price_change_threshold": {
                 "base": 0.2,
@@ -56,8 +71,8 @@ class AgentConfig:
                     print(f"Warning: Missing {section} section, using defaults")
                     self.config[section] = self.default_config[section]
             
-            # Price change thresholds
-            thresh = self.config.get("price_change_threshold", {})
+            # Print agent configuration in one line
+            self.console.print(f"Agent Configuration: [{self.color_style}]{self.config_name}[/]")
             
             # Set minimum allowed values
             if self.config_name == "aggressive":
@@ -67,32 +82,32 @@ class AgentConfig:
                 MIN_BASE = 0.1
                 MIN_THRESHOLD = 0.05
             
-            # If configured values are too low, use defaults
+            thresh = self.config.get("price_change_threshold", {})
             base = thresh.get("base", MIN_BASE)
-            if base < MIN_BASE:
-                print(f"Warning: Base threshold {base}% too low, using {MIN_BASE}%")
-                base = MIN_BASE
-            
             min_thresh = thresh.get("min_threshold", MIN_THRESHOLD)
-            if min_thresh < MIN_THRESHOLD:
-                print(f"Warning: Min threshold {min_thresh}% too low, using {MIN_THRESHOLD}%")
-                min_thresh = MIN_THRESHOLD
+            max_thresh = thresh.get("max_threshold", base * 2)
             
-            # Ensure max threshold is at least base value
-            max_thresh = max(base, thresh.get("max_threshold", base * 2))
-            
-            # Assign validated values
+            # Assign values without modification
             thresh["base"] = base
             thresh["min_threshold"] = min_thresh
             thresh["max_threshold"] = max_thresh
-            thresh["volatility_multiplier"] = max(1.0, min(2.0, thresh.get("volatility_multiplier", 1.5)))
+            thresh["volatility_multiplier"] = thresh.get("volatility_multiplier", 1.5)
             
-            print("\nValidated price change thresholds:")
-            print(f"Config type: {self.config_name}")
-            print(f"Base: {thresh['base']:.3f}%")
-            print(f"Min: {thresh['min_threshold']:.3f}%")
-            print(f"Max: {thresh['max_threshold']:.3f}%")
-            print(f"Volatility multiplier: {thresh['volatility_multiplier']:.1f}x")
+            # Display base threshold with warning if too low
+            base_str = f"Base: {thresh['base']:.3f}%"
+            if thresh['base'] < MIN_BASE:
+                base_str += f" [warning](Warning: Below recommended minimum {MIN_BASE}%)[/]"
+            self.console.print(base_str)
+            
+            # Display min threshold with warning if too low
+            min_str = f"Min: {thresh['min_threshold']:.3f}%"
+            if thresh['min_threshold'] < MIN_THRESHOLD:
+                min_str += f" [warning](Warning: Below recommended minimum {MIN_THRESHOLD}%)[/]"
+            self.console.print(min_str)
+            
+            # Display max threshold
+            self.console.print(f"Max: {thresh['max_threshold']:.3f}%")
+            self.console.print(f"Volatility multiplier: {thresh['volatility_multiplier']:.1f}x")
             
             if not (thresh['min_threshold'] <= thresh['base'] <= thresh['max_threshold']):
                 raise ValueError("Invalid threshold configuration: min <= base <= max not satisfied")
