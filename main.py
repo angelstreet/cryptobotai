@@ -10,6 +10,7 @@ from lib.agent import TradingAgent
 from lib.backtester import Backtester
 from lib.visualization import TradingVisualizer
 from datetime import datetime, timedelta
+from lib.display import console, print_trading_analysis
 
 async def fetch_market_data(
     exchange: str, 
@@ -60,57 +61,6 @@ async def fetch_market_data(
     except Exception as e:
         print(f"Error fetching market data: {e}")
         return pd.DataFrame()
-
-def print_trading_analysis(symbol: str, market_data: dict, decision: dict, agent: TradingAgent, show_reasoning: bool):
-    """Print trading analysis with configurable detail level"""
-    print("\n" + "=" * 50)
-    print(f"TRADING ANALYSIS FOR {symbol}")
-    print("=" * 50 + "\n")
-    
-    # Market Data Section
-    print("Market Data:")
-    print("-" * 30)
-    print(f"Current Price: ${market_data['price']:,.2f}")
-    print(f"24h Change: {market_data['change_24h']:+.2f}%")
-    
-    if show_reasoning:
-        print(f"24h Volume: {market_data['volume']:,.2f}")
-        print(f"24h Range: {market_data['high_low_range']:.2f}% (High: ${market_data['high_24h']:,.2f}, Low: ${market_data['low_24h']:,.2f})")
-        
-        # Volatility Analysis Section
-        print("\nVolatility Analysis:")
-        print("-" * 30)
-        print("Recent price changes:")
-        for i, change in enumerate(market_data['historical_changes'][:5]):
-            print(f"  {i+1}h ago: {change:+.3f}%")
-    
-    # Position Status Section
-    print("\nPosition Status:")
-    print("-" * 30)
-    print(f"Current Position: {agent.current_position:.3f}")
-    
-    if agent.entries:
-        print("Entry Points:")
-        for i, entry in enumerate(agent.entries, 1):
-            profit_loss = ((market_data['price'] - entry['price']) / entry['price']) * 100
-            entry_str = f"  {i}. Amount: {entry['amount']:.3f} @ ${entry['price']:,.2f}"
-            if show_reasoning:
-                entry_str += f" ({entry['timestamp'].strftime('%Y-%m-%d %H:%M')}) P/L: {profit_loss:+.2f}%"
-            print(entry_str)
-    
-    # Decision Section
-    print("\nDecision:")
-    print("-" * 30)
-    print(f"Action: {decision['action']}")
-    print(f"Position Size: {decision['amount']:.2f}")
-    print(f"Confidence: {decision['confidence']}%")
-    
-    if show_reasoning:
-        print("\nDetailed Analysis:")
-        print("-" * 30)
-        print(f"Reasoning:\n{decision['reasoning']}")
-    
-    print("\n" + "=" * 50)
 
 async def run_trading_bot(args):
     if args.backtest:
@@ -249,9 +199,15 @@ async def run_backtest(args):
         print("Error: Could not fetch market data")
         return
     
+    # Set symbol name in DataFrame
+    market_data.name = args.symbol
+    
     # Run backtest
-    results = await backtester.run(trading_agent, market_data)
-    backtester.print_results(results)
+    results = await backtester.run(trading_agent, market_data, args.show_reasoning)
+    if results['trades']:
+        backtester.print_results(results)
+    else:
+        console.print("\nNo trades executed during backtest period", style="info")
 
 def main():
     parser = argparse.ArgumentParser(description='Crypto AI Trading Bot')

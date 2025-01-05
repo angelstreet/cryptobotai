@@ -47,24 +47,11 @@ class TradingAgent:
     
     def _log_api_response(self, response, error=None):
         """Log API response or error for debugging"""
-        print("\nAPI Response Log:")
-        print("=" * 50)
         if error:
+            print("\nAPI Response Log:")
+            print("=" * 50)
             print(f"Error: {error}")
-        else:
-            try:
-                print(f"Model: {self.config.model}")
-                print(f"Response Status: {response.model_dump_json()}")
-                if response.choices and response.choices[0].message:
-                    print("\nResponse Content:")
-                    print("-" * 50)
-                    print(response.choices[0].message.content)
-                else:
-                    print("\nNo content in response")
-            except Exception as e:
-                print(f"Error logging response: {e}")
-                print("Raw response:", response)
-        print("=" * 50)
+            print("=" * 50)
     
     def generate_trading_decision(self, market_data: Dict[str, float]) -> Dict[str, Any]:
         """Generate trading decision based on market data"""
@@ -144,21 +131,68 @@ class TradingAgent:
     def _parse_response(self, response: str) -> Dict[str, Any]:
         """Parse the model's response into structured decision"""
         try:
+            # Clean up response by removing common disclaimers and unnecessary text
+            disclaimer_patterns = [
+                r"(?i)This is not financial advice.*",
+                r"(?i)Always do your own research.*",
+                r"(?i)Remember that trading.*",
+                r"(?i)This analysis should not be.*",
+                r"(?i)Past performance.*",
+                r"(?i)Trading involves risk.*",
+                r"(?i)Please consult.*",
+                r"(?i)It's important to note.*",
+                r"(?i)Always remember that.*",
+                r"(?i)consider your risk tolerance.*",
+                r"(?i)before making any investment decisions.*",
+                r"(?i)not be taken as.*advice.*",
+                r"(?i)markets can be volatile.*",
+                r"(?i)do thorough research.*",
+                r"(?i)seek professional advice.*",
+                r"(?i)make sure to.*",
+                r"(?i)keep in mind that.*",
+                r"(?i)as with any trading.*"
+            ]
+            
+            cleaned_response = response
+            for pattern in disclaimer_patterns:
+                cleaned_response = re.sub(pattern, "", cleaned_response, flags=re.DOTALL)
+            
+            # Remove multiple newlines and clean up whitespace
+            cleaned_response = re.sub(r'\n\s*\n', '\n\n', cleaned_response).strip()
+            
             # Extract action (default to HOLD if not found)
-            action_match = re.search(r"Action:?\s*(BUY|SELL|HOLD)", response, re.IGNORECASE)
+            action_match = re.search(r"Action:?\s*(BUY|SELL|HOLD)", cleaned_response, re.IGNORECASE)
             action = action_match.group(1).upper() if action_match else "HOLD"
             
             # Extract position size (default to 0)
-            size_match = re.search(r"Position size:?\s*(0\.\d+|[01])", response)
+            size_match = re.search(r"Position size:?\s*(0\.\d+|[01])", cleaned_response)
             amount = float(size_match.group(1)) if size_match else 0.0
             
             # Extract confidence (default to 0)
-            conf_match = re.search(r"Confidence:?\s*(\d+)", response)
+            conf_match = re.search(r"Confidence:?\s*(\d+)", cleaned_response)
             confidence = int(conf_match.group(1)) if conf_match else 0
             
             # Extract reasoning
-            reason_match = re.search(r"reasoning:?\s*(.+)", response, re.IGNORECASE | re.DOTALL)
-            reasoning = reason_match.group(1).strip() if reason_match else "No reasoning provided"
+            reason_patterns = [
+                r"Reasoning:?\s*(.+?)(?=\n\n|$)",
+                r"Analysis:?\s*(.+?)(?=\n\n|$)",
+                r"Detailed Analysis:?\s*(.+?)(?=\n\n|$)"
+            ]
+            
+            reasoning = "No reasoning provided"
+            for pattern in reason_patterns:
+                reason_match = re.search(pattern, cleaned_response, re.IGNORECASE | re.DOTALL)
+                if reason_match:
+                    reasoning = reason_match.group(1).strip()
+                    break
+            
+            # Clean up the reasoning text
+            if reasoning != "No reasoning provided":
+                # Remove any remaining disclaimers
+                for pattern in disclaimer_patterns:
+                    reasoning = re.sub(pattern, "", reasoning, flags=re.DOTALL)
+                # Clean up whitespace and empty lines
+                reasoning = re.sub(r'\s+', ' ', reasoning).strip()
             
             return {
                 "action": action,
