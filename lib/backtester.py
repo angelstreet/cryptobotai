@@ -18,7 +18,8 @@ custom_theme = Theme({
     "profit": "green",
     "loss": "red",
     "info": "bold blue",
-    "header": "bold white"
+    "header": "bold white",
+    "error": "bold red"
 })
 
 console = Console(theme=custom_theme)
@@ -27,13 +28,14 @@ class Backtester:
     def __init__(self, initial_balance: Decimal = Decimal('10000')):
         self.initial_balance = initial_balance
         self.request_delay = 0.5  # Delay between API calls in seconds
+        self.console = console  # Use the imported console instance
         
     async def run(self, agent: TradingAgent, market_data: pd.DataFrame, show_reasoning: bool = False) -> Dict[str, Any]:
         """Run backtest simulation"""
         try:
             total_candles = len(market_data)
-            print(f"\nStarting backtest simulation with {total_candles} candles...")
-            print(f"Time range: {market_data['timestamp'].iloc[0]} to {market_data['timestamp'].iloc[-1]}\n")
+            self.console.print(f"\nStarting backtest simulation with {total_candles} candles...")
+            self.console.print(f"Time range: {market_data['timestamp'].iloc[0]} to {market_data['timestamp'].iloc[-1]}\n")
             
             trades = []
             balance = self.initial_balance
@@ -48,7 +50,7 @@ class Backtester:
                 candle_date = market_data['timestamp'].iloc[i].date()
                 if candle_date != current_date:
                     current_date = candle_date
-                    print(f"Processing {current_date.strftime('%Y-%m-%d')}...")
+                    self.console.print(f"Processing {current_date.strftime('%Y-%m-%d')}...")
                 
                 # Show progress
                 progress = ((i + 1) / total_candles) * 100
@@ -78,31 +80,35 @@ class Backtester:
                 # Get trading decision
                 decision = agent.generate_trading_decision(agent_data)
                 
-                if show_reasoning:
-                    # Print progress separator
-                    print("\n" + "=" * 80, style="dim")
-                    print(f"Analyzing candle {i+1}/{total_candles} ({(i+1)/total_candles*100:.1f}%)", style="dim")
-                    print("=" * 80 + "\n", style="dim")
+                # Always show debug line if debug is enabled
+                if agent.debug:
+                    # Calculate required change and volatility adjustment
+                    threshold_config = agent.config.price_change_threshold
+                    base_threshold = threshold_config["base"]
+                    volatility_adjustment = agent._calculate_volatility(agent.historical_data)
+                    required_change = base_threshold * threshold_config["volatility_multiplier"] * volatility_adjustment
+                    required_change = max(threshold_config["min_threshold"], 
+                                        min(required_change, threshold_config["max_threshold"]))
                     
-                    # Display trading analysis for all decisions
-                    print_trading_analysis(
-                        market_data.name,  # Symbol
-                        agent_data,        # Market data
-                        decision,          # Trading decision
-                        agent,             # Trading agent
-                        True              # Show reasoning
+                    debug_str = (
+                        f"#{i+1:04d} | "
+                        f"Price: ${float(current_data['close']):,.2f} | "
+                        f"Change: {agent_data['change_24h']:+.4f}% | "
+                        f"Vol: {agent_data['volume']:.2f} | "
+                        f"Pos: {position:.3f} | "
+                        f"Req: {required_change:.4f}% (Vol: {volatility_adjustment:.2f}x) | "
+                        f"{decision['action']} ({decision['confidence']}%)"
                     )
-                elif i % max(1, total_candles // 10) == 0 and progress > 0:
-                    print(f"Progress: {progress:.1f}%", end="\r")
+                    self.console.print(debug_str)
                 
                 await asyncio.sleep(self.request_delay)  # Rate limiting
                 
                 # Execute trade
                 if decision['action'] != 'HOLD':
-                    print(f"\nPotential {decision['action']} signal detected:", style="info")
-                    print(f"Price: ${float(next_data['open']):,.2f}")
-                    print(f"Amount: {decision['amount']:.3f}")
-                    print(f"Current Balance: ${float(balance):,.2f}")
+                    self.console.print(f"\nPotential {decision['action']} signal detected:", style="info")
+                    self.console.print(f"Price: ${float(next_data['open']):,.2f}")
+                    self.console.print(f"Amount: {decision['amount']:.3f}")
+                    self.console.print(f"Current Balance: ${float(balance):,.2f}")
                     
                     trade = {
                         'timestamp': current_data['timestamp'],
@@ -125,9 +131,10 @@ class Backtester:
                             entry_price = trade['price']
                             trade['cost'] = cost
                             trades.append(trade)
-                            print("Trade executed successfully", style="buy")
+                            agent.update_position('BUY', float(trade['amount']), float(trade['price']))  # Update agent's position
+                            self.console.print("Trade executed successfully", style="buy")
                         else:
-                            print(f"Insufficient balance (needed: ${float(cost):,.2f})", style="loss")
+                            self.console.print(f"Insufficient balance (needed: ${float(cost):,.2f})", style="loss")
                     
                     elif decision['action'] == 'SELL' and position > 0:
                         proceeds = trade['price'] * min(trade['amount'], position) * (1 - trade['fee'])
@@ -138,9 +145,10 @@ class Backtester:
                         if position == 0:
                             entry_price = None
                         trades.append(trade)
-                        print("Trade executed successfully", style="sell")
+                        agent.update_position('SELL', float(trade['amount']), float(trade['price']))  # Update agent's position
+                        self.console.print("Trade executed successfully", style="sell")
                     else:
-                        print("Trade not executed (no position to sell)", style="loss")
+                        self.console.print("Trade not executed (no position to sell)", style="loss")
             
             # Calculate final results
             final_position_value = position * Decimal(str(market_data['close'].iloc[-1]))
@@ -153,7 +161,7 @@ class Backtester:
                 'final_position_value': final_position_value
             }
         except Exception as e:
-            print(f"Error during backtest: {e}")
+            self.console.print(f"Error during backtest: {e}", style="error")
             return {
                 'trades': [],
                 'final_balance': self.initial_balance,

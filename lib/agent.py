@@ -14,11 +14,16 @@ class TradingAgent:
         self.current_position = 0.0  # Track current position size
         self.entries = []  # List of dicts containing entry prices and amounts
         self.debug = False  # Debug mode flag
+        self.show_reasoning = False  # Show reasoning flag
         self.console = self.config.console
         
     def set_debug(self, debug: bool):
         """Enable or disable debug mode"""
         self.debug = debug
+    
+    def set_show_reasoning(self, show_reasoning: bool):
+        """Enable or disable showing reasoning"""
+        self.show_reasoning = show_reasoning
     
     def _calculate_volatility(self, price_changes: list) -> float:
         """Calculate volatility using standard deviation of recent price changes"""
@@ -76,7 +81,8 @@ class TradingAgent:
                     f"[dim]Price: [/]${market_data['price']:<10,.2f} | "
                     f"[dim]Change: [/]"
                     f"[{self._get_change_color(market_data['change_24h'])}]{market_data['change_24h']:>+7.4f}%[/] | "
-                    f"[dim]Vol: [/]{market_data['volume']:<8.2f}"
+                    f"[dim]Vol: [/]{market_data['volume']:<8.2f} | "
+                    f"[dim]Pos: [/]{self.current_position:.3f}"
                 )
             
             # Check price change threshold
@@ -105,13 +111,26 @@ class TradingAgent:
                 return decision
             
             # Format prompt with market data
+            take_profit_targets = [f"{tp['size']*100:.0f}% at +{tp['target']:.1f}%" 
+                                  for tp in self.config.trading_params['take_profit']]
+            take_profit_str = ", ".join(take_profit_targets)
+            
             prompt = self.config.prompt_template.format(
                 price=market_data["price"],
                 volume=market_data["volume"],
                 change_24h=market_data["change_24h"],
                 high_low_range=market_data["high_low_range"],
                 current_position=self.current_position,
-                entry_price=self.entries[-1]['price'] if self.entries else "None"
+                entry_price=self.entries[-1]['price'] if self.entries else "None",
+                min_size=self.config.position_sizing['min_position_size'],
+                max_size=self.config.position_sizing['max_position_size'],
+                base_threshold=self.config.price_change_threshold['base'],
+                required_change=required_change,
+                stop_loss=self.config.stop_loss['initial'],
+                trailing_stop=self.config.stop_loss['trailing'],
+                take_profit_str=take_profit_str,
+                min_confidence=self.config.trading_params['min_confidence'],
+                volatility_mult=self.config.price_change_threshold['volatility_multiplier']
             )
             
             # Get response from model
@@ -125,7 +144,52 @@ class TradingAgent:
                     temperature=self.config.temperature,
                     max_tokens=self.config.max_tokens
                 )
-                self._log_api_response(response)
+                decision = self._parse_response(response.choices[0].message.content)
+                
+                if self.show_reasoning:
+                    # Print separator before each candle analysis
+                    self.console.print("─" * 120, style="dim")
+                    
+                    # Show debug line first if both debug and show_reasoning are enabled
+                    if not self.debug:
+                        debug_str = (
+                            f"#{market_data.get('candle_number', 0):04d} | "
+                            f"Price: ${market_data['price']:,.2f} | "
+                            f"Change: {market_data['change_24h']:+.4f}% | "
+                            f"Vol: {market_data['volume']:.2f} | "
+                            f"Pos: {self.current_position:.3f} | "
+                            f"Req: {required_change:.4f}% (Vol: {volatility_adjustment:.2f}x) | "
+                            f"{decision['action']} ({decision['confidence']}%)"
+                        )
+                        self.console.print(debug_str)
+                    
+                    self.console.print(f"[bold cyan]Candle #{market_data.get('candle_number', 0)}:[/] "
+                                      f"[bold]Config:[/] Min Conf: {self.config.trading_params['min_confidence']}% | "
+                                      f"Base Thresh: {self.config.price_change_threshold['base']:.4f}% | "
+                                      f"Pos Range: {self.config.position_sizing['min_position_size']:.1f}-{self.config.position_sizing['max_position_size']:.1f} | "
+                                      f"SL: {self.config.stop_loss['initial']:.1f}% (Trail: {self.config.stop_loss['trailing']:.1f}%) | "
+                                      f"[bold]Market:[/] Change: {market_data['change_24h']:+.4f}% (Req: {required_change:.4f}%) | "
+                                      f"Vol: {market_data['volume']:.2f} | "
+                                      f"H-L Range: {market_data['high_low_range']:.2f}% | "
+                                      f"Position: {self.current_position:.3f} | "
+                                      f"[bold]Decision:[/] {decision['action']} | Size: {decision['amount']:.2f} | AI Conf: {decision['confidence']}% | "
+                                      f"[bold]Reason:[/] {decision['reasoning']}")
+                
+                # Apply trading parameters
+                decision = self._apply_trading_params(decision, market_data)
+                
+                # Print debug info after decision is made
+                if self.debug and debug_str:
+                    action_style = {
+                        'BUY': 'buy',
+                        'SELL': 'sell',
+                        'HOLD': 'dim white'
+                    }.get(decision['action'], 'dim white')
+                    debug_str += f" | [{action_style}]{decision['action']}[/] ({decision['confidence']}%)"
+                    self.console.print(debug_str)
+                
+                return decision
+                
             except Exception as api_error:
                 self._log_api_response(None, error=str(api_error))
                 return self._get_default_decision(f"API error: {api_error}")
@@ -135,11 +199,39 @@ class TradingAgent:
                 print("Warning: Received invalid response from API")
                 return self._get_default_decision("API response invalid")
             
-            # Parse response
-            decision = self._parse_response(response.choices[0].message.content)
+            # Debug decision-making process
+            if self.show_reasoning:
+                self.console.print("\n[bold cyan]Decision Analysis:[/]")
+                self.console.print("=" * 50)
+                
+                # Show relevant configuration parameters
+                self.console.print("\n[bold]Config Parameters:[/]")
+                self.console.print(f"Min Confidence: {self.config.trading_params['min_confidence']}%")
+                self.console.print(f"Base Threshold: {self.config.price_change_threshold['base']:.4f}%")
+                self.console.print(f"Position Size Range: {self.config.position_sizing['min_position_size']:.1f} - {self.config.position_sizing['max_position_size']:.1f}")
+                self.console.print(f"Stop Loss: {self.config.stop_loss['initial']:.1f}% | Trailing: {self.config.stop_loss['trailing']:.1f}%")
+                
+                # Show market conditions
+                self.console.print("\n[bold]Market Conditions:[/]")
+                self.console.print(f"Price Change: {market_data['change_24h']:+.4f}% (Required: {required_change:.4f}%)")
+                self.console.print(f"Volume: {market_data['volume']:.2f}")
+                self.console.print(f"High-Low Range: {market_data['high_low_range']:.2f}%")
+                self.console.print(f"Current Position: {self.current_position:.3f}")
+                
+                # Show AI decision and reasoning
+                self.console.print("\n[bold]AI Decision:[/]")
+                self.console.print(f"Action: {decision['action']}")
+                self.console.print(f"Size: {decision['amount']:.2f}")
+                self.console.print(f"Confidence: {decision['confidence']}%")
+                self.console.print(f"\nReasoning: {decision['reasoning']}")
+                self.console.print("\n" + "=" * 50)
             
             # Apply trading parameters
             decision = self._apply_trading_params(decision, market_data)
+            
+            # Show final decision after parameters
+            if self.show_reasoning:  # Only show when --show-reasoning is enabled
+                self.console.print(f"Final Decision after params: {decision}")
             
             # Print debug info after decision is made
             if self.debug and debug_str:
@@ -301,6 +393,14 @@ class TradingAgent:
         params = self.config.trading_params
         position_config = self.config.position_sizing
         
+        # Debug trading parameters
+        if self.debug:
+            self.console.print(f"[dim]Trading Params Check:[/] "
+                             f"Min Conf: {params['min_confidence']}% (Got: {decision['confidence']}%) | "
+                             f"Action: {decision['action']} | "
+                             f"Size: {decision['amount']:.2f} | "
+                             f"Position: {self.current_position:.3f}")
+        
         # Force position size to 0 for HOLD
         if decision['action'] == 'HOLD':
             decision['amount'] = 0.0
@@ -315,8 +415,17 @@ class TradingAgent:
         decision['amount'] = min(decision['amount'], position_config['max_position_size'])
         
         # Ensure minimum position size for active trades
-        if decision['action'] != 'HOLD' and decision['amount'] < 0.1:
-            decision['amount'] = 0.1
+        if decision['action'] != 'HOLD':
+            if decision['amount'] < position_config['min_position_size']:
+                decision['amount'] = position_config['min_position_size']
+                if self.debug:
+                    self.console.print(f"[dim]Adjusted size to minimum: {decision['amount']:.2f}[/]")
+        
+        # Prevent SELL when no position
+        if decision['action'] == 'SELL' and self.current_position <= 0:
+            decision['action'] = 'HOLD'
+            decision['amount'] = 0.0
+            decision['reasoning'] = "Cannot SELL: No position to sell"
         
         return decision 
     

@@ -90,6 +90,7 @@ async def run_trading_bot(args):
     
     trading_agent = TradingAgent(openai_client=openai_client, config_name=args.agent_config)
     trading_agent.set_debug(args.debug)  # Set debug mode
+    trading_agent.set_show_reasoning(args.show_reasoning)  # Set show reasoning mode
     
     market_data = await fetch_market_data(args.exchange, args.symbol, args.timeframe)
     if market_data.empty:
@@ -191,6 +192,7 @@ async def run_backtest(args):
     
     trading_agent = TradingAgent(openai_client=openai_client, config_name=args.agent_config)
     trading_agent.set_debug(args.debug)  # Set debug mode
+    trading_agent.set_show_reasoning(args.show_reasoning)  # Set show reasoning mode
     backtester = Backtester(initial_balance=Decimal(args.initial_balance))
     
     # Fetch historical data with date range
@@ -244,7 +246,7 @@ def main():
     parser.add_argument('--end-date', type=str, help='End date for backtest (DD/MM/YYYY)')
     parser.add_argument('--initial-balance', type=float, default=10000, help='Initial balance for backtest')
     parser.add_argument('--agent-config', type=str, default='default',
-                       choices=['default', 'conservative', 'aggressive'],
+                       choices=['default', 'conservative', 'aggressive', 'buytest'],
                        help='Trading agent configuration to use')
     parser.add_argument('--advanced', action='store_true', help='Show advanced visualization')
     

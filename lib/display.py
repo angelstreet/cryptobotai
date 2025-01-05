@@ -23,19 +23,12 @@ def print_trading_analysis(
     agent: TradingAgent,
     show_reasoning: bool = False
 ):
-    # Decision Section
-    action_style = {'BUY': 'buy', 'SELL': 'sell', 'HOLD': 'hold'}.get(decision['action'], 'white')
-    decision_str = (
-        f"\nDecision: [{action_style}]{decision['action']:4}[/] | "
-        f"Position: {agent.current_position:.3f} | "
-        f"Size: {decision['amount']:.2f} | "
-        f"Conf: {decision['confidence']}%"
-    )
-    console.print(decision_str)
-    
     if show_reasoning:
-        console.print("\nDetailed Analysis:", style="info")
-        console.print("-" * 30)
-        console.print(f"Reasoning:\n{decision['reasoning']}")
+        action_style = {'BUY': 'buy', 'SELL': 'sell', 'HOLD': 'hold'}.get(decision['action'], 'white')
+        console.print(f"[{action_style}]{decision['action']:4}[/] | "
+                     f"Position: {agent.current_position:.3f} | "
+                     f"Size: {decision['amount']:.2f} | "
+                     f"Conf: {decision['confidence']}% | "
+                     f"Reason: {decision['reasoning']}")
     
     console.print("\n" + "=" * 50, style="header") 
