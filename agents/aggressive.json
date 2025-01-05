@@ -1,29 +1,29 @@
 {
     "model": "anthropic/claude-3-sonnet",
-    "temperature": 0.9,
+    "temperature": 0.8,
     "max_tokens": 200,
-    "prompt_template": "You are an aggressive cryptocurrency trading assistant. Analyze the following market data and provide a high-risk trading decision:\n\nCurrent Price: ${price}\nVolume: {volume}\n24h Change: {change_24h}%\n\nProvide your decision as:\n- Action (BUY/SELL/HOLD)\n- Position size (0.0-0.5)\n- Confidence (0-100%)\n- Brief reasoning\n\nAnalysis:",
+    "prompt_template": "You are a cryptocurrency trading assistant. Analyze the following market data and provide a trading decision:\n\nMarket Analysis:\nCurrent Price: ${price}\nVolume: {volume}\n24h Change: {change_24h}%\n24h High-Low Range: {high_low_range}%\nCurrent Position: {current_position}\nEntry Price: {entry_price}\nMarket Context: Analyze the 24h price change and volatility to determine trend direction and strength.\nPosition sizing should be 0 for HOLD, or between 0.1-1.0 for active positions.\n\nProvide your decision as:\n- Action (BUY/SELL/HOLD)\n- Position size (0.0 for HOLD, 0.1-1.0 for active trades)\n- Confidence (0-100%)\n- Brief reasoning\n\nAnalysis:",
     "trading_params": {
         "min_confidence": 40,
         "take_profit": [
-            {"level": 5.0, "size": 0.4},
-            {"level": 10.0, "size": 0.4},
-            {"level": 15.0, "size": 0.2}
+            {"level": 5.0, "size": 0.3},
+            {"level": 7.5, "size": 0.3},
+            {"level": 10.0, "size": 0.4}
         ]
     },
     "time_exit": {
-        "max_holding_period": "24h"
+        "max_holding_period": "48h"
     },
     "stop_loss": {
         "initial": 5.0,
-        "trailing": 2.0,
+        "trailing": 2.5,
         "activation_threshold": 3.0
     },
     "price_change_threshold": {
-        "base": 0.5,
+        "base": 0.005,
         "volatility_multiplier": 1.5,
-        "min_threshold": 0.25,
-        "max_threshold": 2.0
+        "min_threshold": 0.003,
+        "max_threshold": 5.0
     },
     "position_sizing": {
         "max_position_size": 0.5,

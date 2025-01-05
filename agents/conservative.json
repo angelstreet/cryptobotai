@@ -1,29 +1,29 @@
 {
     "model": "anthropic/claude-3-sonnet",
-    "temperature": 0.5,
+    "temperature": 0.6,
     "max_tokens": 200,
-    "prompt_template": "You are a conservative cryptocurrency trading assistant. Analyze the following market data and provide a cautious trading decision:\n\nCurrent Price: ${price}\nVolume: {volume}\n24h Change: {change_24h}%\n\nProvide your decision as:\n- Action (BUY/SELL/HOLD)\n- Position size (0.0-0.1)\n- Confidence (0-100%)\n- Brief reasoning\n\nAnalysis:",
+    "prompt_template": "You are a cryptocurrency trading assistant. Analyze the following market data and provide a trading decision:\n\nMarket Analysis:\nCurrent Price: ${price}\nVolume: {volume}\n24h Change: {change_24h}%\n24h High-Low Range: {high_low_range}%\nCurrent Position: {current_position}\nEntry Price: {entry_price}\nMarket Context: Analyze the 24h price change and volatility to determine trend direction and strength.\nPosition sizing should be 0 for HOLD, or between 0.1-1.0 for active positions.\n\nProvide your decision as:\n- Action (BUY/SELL/HOLD)\n- Position size (0.0 for HOLD, 0.1-1.0 for active trades)\n- Confidence (0-100%)\n- Brief reasoning\n\nAnalysis:",
     "trading_params": {
         "min_confidence": 80,
         "take_profit": [
-            {"level": 1.0, "size": 0.6},
-            {"level": 2.0, "size": 0.3},
-            {"level": 3.0, "size": 0.1}
+            {"level": 1.0, "size": 0.5},
+            {"level": 1.5, "size": 0.3},
+            {"level": 2.0, "size": 0.2}
         ]
     },
     "time_exit": {
-        "max_holding_period": "12h"
+        "max_holding_period": "24h"
     },
     "stop_loss": {
         "initial": 1.0,
         "trailing": 0.5,
-        "activation_threshold": 1.0
+        "activation_threshold": 0.75
     },
     "price_change_threshold": {
-        "base": 2.0,
+        "base": 0.02,
         "volatility_multiplier": 0.75,
-        "min_threshold": 1.0,
-        "max_threshold": 4.0
+        "min_threshold": 0.01,
+        "max_threshold": 2.0
     },
     "position_sizing": {
         "max_position_size": 0.1,
@@ -34,4 +34,4 @@
             "risk": "percent"
         }
     }
-}
+} 

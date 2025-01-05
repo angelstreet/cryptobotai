@@ -1,6 +1,7 @@
 openai
 python-dotenv
 ccxt
+aiohttp
 pandas
 matplotlib
 rich

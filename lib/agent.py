@@ -1,9 +1,9 @@
-from typing import Dict, Any
 from openai import OpenAI
 import re
-from config import AgentConfig
+from .config import AgentConfig
 import numpy as np
 from datetime import datetime
+from typing import Dict, Any
 
 class TradingAgent:
     def __init__(self, openai_client: OpenAI, config_name: str = "default"):
