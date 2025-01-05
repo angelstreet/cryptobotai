@@ -63,11 +63,6 @@ async def fetch_market_data(
         return pd.DataFrame()
 
 async def run_trading_bot(args):
-    # Show header first
-    console.print("\n" + "=" * 50, style="header")
-    console.print(f"TRADING ANALYSIS FOR {args.symbol}", style="header")
-    console.print("=" * 50, style="header")
-    
     if args.backtest:
         await run_backtest(args)
         return
@@ -222,6 +217,21 @@ async def run_backtest(args):
         console.print("\nNo trades executed during backtest period", style="info")
 
 def main():
+    # TODO: Multi-Pair Trading Support
+    # 1. Add support for loading pair lists from config files
+    # 2. Implement parallel processing for multiple pairs
+    # 3. Add market scanner functionality
+    # 4. Implement cross-pair risk management
+    
+    # TODO: Config Optimization
+    # 1. Add --optimize flag for backtesting multiple configs
+    # 2. Implement quiet mode for batch testing
+    # 3. Add performance metrics calculation
+    # 4. Generate optimization reports
+    # Example future usage:
+    # python main.py --optimize --pairs top10 --days 30 --configs all
+    # python main.py --optimize --pairs BTC/USDT --days 30 --generate-config
+    
     parser = argparse.ArgumentParser(description='Crypto AI Trading Bot')
     parser.add_argument('--symbol', type=str, required=True, help='Trading pair (e.g., BTC/USDT)')
     parser.add_argument('--exchange', type=str, default='binance', help='Exchange to use')

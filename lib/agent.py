@@ -72,7 +72,7 @@ class TradingAgent:
             if self.debug:
                 # Use info style for candle data, config color only for the config name
                 debug_str = (
-                    f"{'\nCANDLE':<8} | "
+                    f"[dim]#{market_data.get('candle_number', 0):04d}[/] | "
                     f"[dim]Price: [/]${market_data['price']:<10,.2f} | "
                     f"[dim]Change: [/]{market_data['change_24h']:>+7.4f}% | "
                     f"[dim]Vol: [/]{market_data['volume']:<8.2f}"
