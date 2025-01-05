@@ -1,25 +1,4 @@
-# Core data handling
-pandas>=2.0.0  # Used in multiple files for data manipulation
-numpy>=1.24.0  # Implicit dependency for pandas
-
-# API and Exchange Integration
-ccxt>=4.0.0  # Used in MarketDataFetcher
-aiohttp>=3.8.0  # Required for async operations
-python-dotenv>=1.0.0  # For loading environment variables
-
-# Web3 Integration
-web3>=6.0.0  # Used in network.py for blockchain interaction
-
-# Machine Learning / LLM
-transformers>=4.30.0  # Used in llm_service.py for HuggingFace models
-openai>=1.0.0  # For OpenRouter API integration
-
-# Technical Analysis
-ta>=0.10.0  # For technical analysis in TechnicalAnalyzer
-
-# Note: PyTorch should be installed separately using:
-# For CPU only:
-# pip3 install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cpu
-# 
-# For CUDA support:
-# pip3 install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu118
+openai
+python-dotenv
+ccxt
+pandas
