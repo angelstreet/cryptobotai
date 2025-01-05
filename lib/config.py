@@ -7,9 +7,30 @@ class AgentConfig:
     def __init__(self, config_name: str = "default"):
         load_dotenv()
         self.config_name = config_name
+        self.default_config = {
+            "price_change_threshold": {
+                "base": 0.2,
+                "min_threshold": 0.1,
+                "max_threshold": 2.0,
+                "volatility_multiplier": 1.5
+            },
+            "position_sizing": {
+                "max_position_size": 0.5,
+                "min_position_size": 0.1,
+                "risk_per_trade": 0.05
+            },
+            "trading_params": {
+                "min_confidence": 40,
+                "take_profit": [
+                    {"target": 2.0, "size": 0.5},
+                    {"target": 5.0, "size": 1.0}
+                ]
+            }
+        }
         self.config = self._load_config()
         # Override model from environment if set
         self.config["model"] = os.getenv("AI_MODEL", self.config["model"])
+        self._validate_config()
     
     def _load_config(self) -> Dict[str, Any]:
         """Load agent configuration from JSON file"""
@@ -25,6 +46,67 @@ class AgentConfig:
             print(f"Warning: Config '{self.config_name}' not found, using default")
             with open(os.path.join("agents", "default.json"), 'r') as f:
                 return json.load(f)
+    
+    def _validate_config(self):
+        """Validate and normalize configuration values"""
+        try:
+            # Ensure required sections exist
+            for section in ["price_change_threshold", "position_sizing", "trading_params"]:
+                if section not in self.config:
+                    print(f"Warning: Missing {section} section, using defaults")
+                    self.config[section] = self.default_config[section]
+            
+            # Price change thresholds
+            thresh = self.config.get("price_change_threshold", {})
+            
+            # Set minimum allowed values
+            if self.config_name == "aggressive":
+                MIN_BASE = 0.05
+                MIN_THRESHOLD = 0.01
+            else:
+                MIN_BASE = 0.1
+                MIN_THRESHOLD = 0.05
+            
+            # If configured values are too low, use defaults
+            base = thresh.get("base", MIN_BASE)
+            if base < MIN_BASE:
+                print(f"Warning: Base threshold {base}% too low, using {MIN_BASE}%")
+                base = MIN_BASE
+            
+            min_thresh = thresh.get("min_threshold", MIN_THRESHOLD)
+            if min_thresh < MIN_THRESHOLD:
+                print(f"Warning: Min threshold {min_thresh}% too low, using {MIN_THRESHOLD}%")
+                min_thresh = MIN_THRESHOLD
+            
+            # Ensure max threshold is at least base value
+            max_thresh = max(base, thresh.get("max_threshold", base * 2))
+            
+            # Assign validated values
+            thresh["base"] = base
+            thresh["min_threshold"] = min_thresh
+            thresh["max_threshold"] = max_thresh
+            thresh["volatility_multiplier"] = max(1.0, min(2.0, thresh.get("volatility_multiplier", 1.5)))
+            
+            print("\nValidated price change thresholds:")
+            print(f"Config type: {self.config_name}")
+            print(f"Base: {thresh['base']:.3f}%")
+            print(f"Min: {thresh['min_threshold']:.3f}%")
+            print(f"Max: {thresh['max_threshold']:.3f}%")
+            print(f"Volatility multiplier: {thresh['volatility_multiplier']:.1f}x")
+            
+            if not (thresh['min_threshold'] <= thresh['base'] <= thresh['max_threshold']):
+                raise ValueError("Invalid threshold configuration: min <= base <= max not satisfied")
+            
+            # Position sizing
+            pos = self.config.get("position_sizing", {})
+            pos["max_position_size"] = max(0.1, min(1.0, pos.get("max_position_size", 0.5)))
+            pos["min_position_size"] = max(0.01, min(pos["max_position_size"], pos.get("min_position_size", 0.1)))
+            pos["risk_per_trade"] = max(0.01, min(0.1, pos.get("risk_per_trade", 0.05)))
+            
+        except Exception as e:
+            print(f"\nError in configuration: {e}")
+            print("Falling back to default configuration")
+            self.config.update(self.default_config)
     
     @property
     def prompt_template(self) -> str:

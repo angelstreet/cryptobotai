@@ -120,13 +120,60 @@ class TradingAgent:
             return self._get_default_decision(str(e))
     
     def _get_default_decision(self, reason: str) -> Dict[str, Any]:
-        """Return a safe default decision when errors occur"""
-        return {
+        """Return a safe default decision when errors occur or conditions are not met."""
+        
+        # Initialize default response
+        decision = {
             "action": "HOLD",
             "amount": 0.0,
             "confidence": 0,
-            "reasoning": f"Error occurred: {reason}"
+            "reasoning": ""
         }
+        
+        try:
+            if "below dynamic threshold" in reason.lower():
+                # Extract values from the error message
+                parts = reason.split("(")
+                price_change = float(parts[1].split("%")[0])
+                threshold = float(parts[2].split("%")[0])
+                
+                if abs(price_change) < 0.001:
+                    decision["reasoning"] = (
+                        f"Market is showing minimal movement (±{abs(price_change):.3f}%). "
+                        f"Waiting for more significant price action above {threshold:.3f}% "
+                        f"before considering trades."
+                    )
+                else:
+                    direction = "decrease" if price_change < 0 else "increase"
+                    decision["reasoning"] = (
+                        f"Current price {direction} of {abs(price_change):.3f}% is below "
+                        f"the minimum threshold of {threshold:.3f}%. Holding position until "
+                        f"market volatility increases."
+                    )
+            
+            elif "API error" in reason:
+                decision["reasoning"] = (
+                    f"Trading paused due to API communication issue. {reason}. "
+                    f"Will retry on next update."
+                )
+            
+            elif "invalid response" in reason.lower():
+                decision["reasoning"] = (
+                    f"Received invalid trading signals. Defaulting to HOLD for safety. "
+                    f"Details: {reason}"
+                )
+            
+            else:
+                # Generic error handling
+                decision["reasoning"] = (
+                    f"Holding position due to: {reason}"
+                )
+            
+        except Exception as e:
+            # Fallback for parsing errors
+            decision["reasoning"] = f"System safety: Holding position. Error details: {str(e)}"
+        
+        return decision
     
     def _parse_response(self, response: str) -> Dict[str, Any]:
         """Parse the model's response into structured decision"""

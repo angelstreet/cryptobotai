@@ -1,14 +1,19 @@
 {
-    "model": "default-model",
-    "temperature": 0.8,
-    "max_tokens": 200,
-    "prompt_template": "You are a cryptocurrency trading assistant. Analyze the following market data and provide a trading decision:\n\nMarket Analysis:\nCurrent Price: ${price}\nVolume: {volume}\n24h Change: {change_24h}%\n24h High-Low Range: {high_low_range}%\nCurrent Position: {current_position}\nEntry Price: {entry_price}\nMarket Context: Analyze the 24h price change and volatility to determine trend direction and strength.\nPosition sizing should be 0 for HOLD, or between 0.1-1.0 for active positions.\n\nProvide your decision as:\n- Action (BUY/SELL/HOLD)\n- Position size (0.0 for HOLD, 0.1-1.0 for active trades)\n- Confidence (0-100%)\n- Brief reasoning\n\nAnalysis:",
+    "model": "mistralai/mistral-7b-instruct",
+    "temperature": 0.7,
+    "max_tokens": 500,
+    "prompt_template": "Analyze the following market data and provide a trading decision:\n\nCurrent Price: ${price:.2f}\nVolume: {volume:.2f}\n24h Change: {change_24h:.2f}%\nHigh-Low Range: {high_low_range:.2f}%\nCurrent Position: {current_position:.3f}\nEntry Price: {entry_price}\n\nProvide your analysis and decision in the following format:\n\nAction: BUY/SELL/HOLD\nPosition size: (0-1)\nConfidence: (0-100)\nReasoning: Your analysis here",
     "trading_params": {
         "min_confidence": 40,
         "take_profit": [
-            {"level": 5.0, "size": 0.3},
-            {"level": 7.5, "size": 0.3},
-            {"level": 10.0, "size": 0.4}
+            {
+                "target": 2.0,
+                "size": 0.5
+            },
+            {
+                "target": 5.0,
+                "size": 1.0
+            }
         ]
     },
     "time_exit": {
@@ -20,13 +25,14 @@
         "activation_threshold": 3.0
     },
     "price_change_threshold": {
-        "base": 0.005,
-        "volatility_multiplier": 1.5,
-        "min_threshold": 0.003,
-        "max_threshold": 5.0
+        "base": 0.05,
+        "volatility_multiplier": 1.0,
+        "min_threshold": 0.01,
+        "max_threshold": 0.2
     },
     "position_sizing": {
-        "max_position_size": 0.5,
+        "max_position_size": 1.0,
+        "min_position_size": 0.1,
         "risk_per_trade": 0.05,
         "kelly_factor": 1.0,
         "units": {

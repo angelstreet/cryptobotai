@@ -20,9 +20,9 @@
         "activation_threshold": 1.5
     },
     "price_change_threshold": {
-        "base": 0.01,
-        "volatility_multiplier": 1.0,
-        "min_threshold": 0.005,
+        "base": 0.3,
+        "volatility_multiplier": 1.5,
+        "min_threshold": 0.15,
         "max_threshold": 3.0
     },
     "position_sizing": {

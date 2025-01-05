@@ -36,14 +36,18 @@ class Backtester:
         entry_price = None
         total_candles = len(market_data) - 1
         
+        # Group candles by date for progress tracking
+        current_date = None
+        
         console.print(f"\nStarting backtest simulation with {total_candles} candles...", style="info")
         console.print(f"Time range: {market_data['timestamp'].iloc[0]} to {market_data['timestamp'].iloc[-1]}\n")
         
         for i in range(len(market_data) - 1):
-            # Progress indicator every 10%
-            if i % max(1, total_candles // 10) == 0:
-                progress = (i / total_candles) * 100
-                console.print(f"Progress: {progress:.1f}%", style="info")
+            # Show progress when date changes
+            candle_date = market_data['timestamp'].iloc[i].date()
+            if candle_date != current_date:
+                current_date = candle_date
+                console.print(f"Processing {current_date.strftime('%Y-%m-%d')}...", style="info")
             
             current_data = market_data.iloc[i]
             next_data = market_data.iloc[i + 1]
@@ -90,12 +94,17 @@ class Backtester:
             
             # Execute trade
             if decision['action'] != 'HOLD':
+                console.print(f"\nPotential {decision['action']} signal detected:", style="info")
+                console.print(f"Price: ${float(next_data['open']):,.2f}")
+                console.print(f"Amount: {decision['amount']:.3f}")
+                console.print(f"Current Balance: ${float(balance):,.2f}")
+                
                 trade = {
                     'timestamp': current_data['timestamp'],
                     'action': decision['action'],
-                    'price': Decimal(str(next_data['open'])),  # Use next candle's open price
+                    'price': Decimal(str(next_data['open'])),
                     'amount': Decimal(str(decision['amount'])),
-                    'fee': Decimal('0.001'),  # 0.1% fee
+                    'fee': Decimal('0.001'),
                     'balance': balance,
                     'position': position,
                     'cost': Decimal('0'),
@@ -111,6 +120,9 @@ class Backtester:
                         entry_price = trade['price']
                         trade['cost'] = cost
                         trades.append(trade)
+                        console.print("Trade executed successfully", style="buy")
+                    else:
+                        console.print(f"Insufficient balance (needed: ${float(cost):,.2f})", style="loss")
                 
                 elif decision['action'] == 'SELL' and position > 0:
                     proceeds = trade['price'] * min(trade['amount'], position) * (1 - trade['fee'])
@@ -121,6 +133,9 @@ class Backtester:
                     if position == 0:
                         entry_price = None
                     trades.append(trade)
+                    console.print("Trade executed successfully", style="sell")
+                else:
+                    console.print("Trade not executed (no position to sell)", style="loss")
         
         # Calculate final results
         final_position_value = position * Decimal(str(market_data['close'].iloc[-1]))
