@@ -1,11 +1,15 @@
 import json
 import os
 from typing import Dict, Any, List
+from dotenv import load_dotenv
 
 class AgentConfig:
     def __init__(self, config_name: str = "default"):
+        load_dotenv()
         self.config_name = config_name
         self.config = self._load_config()
+        # Override model from environment if set
+        self.config["model"] = os.getenv("AI_MODEL", self.config["model"])
     
     def _load_config(self) -> Dict[str, Any]:
         """Load agent configuration from JSON file"""

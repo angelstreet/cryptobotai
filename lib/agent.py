@@ -4,6 +4,7 @@ from .config import AgentConfig
 import numpy as np
 from datetime import datetime
 from typing import Dict, Any
+import json
 
 class TradingAgent:
     def __init__(self, openai_client: OpenAI, config_name: str = "default"):
@@ -44,6 +45,27 @@ class TradingAgent:
             
             self.current_position = max(0.0, self.current_position - amount)
     
+    def _log_api_response(self, response, error=None):
+        """Log API response or error for debugging"""
+        print("\nAPI Response Log:")
+        print("=" * 50)
+        if error:
+            print(f"Error: {error}")
+        else:
+            try:
+                print(f"Model: {self.config.model}")
+                print(f"Response Status: {response.model_dump_json()}")
+                if response.choices and response.choices[0].message:
+                    print("\nResponse Content:")
+                    print("-" * 50)
+                    print(response.choices[0].message.content)
+                else:
+                    print("\nNo content in response")
+            except Exception as e:
+                print(f"Error logging response: {e}")
+                print("Raw response:", response)
+        print("=" * 50)
+    
     def generate_trading_decision(self, market_data: Dict[str, float]) -> Dict[str, Any]:
         """Generate trading decision based on market data"""
         try:
@@ -78,15 +100,20 @@ class TradingAgent:
             )
             
             # Get response from model
-            response = self.client.chat.completions.create(
-                model=self.config.model,
-                messages=[
-                    {"role": "system", "content": "You are a cryptocurrency trading assistant."},
-                    {"role": "user", "content": prompt}
-                ],
-                temperature=self.config.temperature,
-                max_tokens=self.config.max_tokens
-            )
+            try:
+                response = self.client.chat.completions.create(
+                    model=self.config.model,
+                    messages=[
+                        {"role": "system", "content": "You are a cryptocurrency trading assistant."},
+                        {"role": "user", "content": prompt}
+                    ],
+                    temperature=self.config.temperature,
+                    max_tokens=self.config.max_tokens
+                )
+                self._log_api_response(response)
+            except Exception as api_error:
+                self._log_api_response(None, error=str(api_error))
+                return self._get_default_decision(f"API error: {api_error}")
             
             # Check if we got a valid response
             if not response or not response.choices or not response.choices[0].message:
