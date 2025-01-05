@@ -13,6 +13,11 @@ class TradingAgent:
         self.historical_data = []  # Store recent price data
         self.current_position = 0.0  # Track current position size
         self.entries = []  # List of dicts containing entry prices and amounts
+        self.debug = False  # Debug mode flag
+        
+    def set_debug(self, debug: bool):
+        """Enable or disable debug mode"""
+        self.debug = debug
     
     def _calculate_volatility(self, price_changes: list) -> float:
         """Calculate volatility using standard deviation of recent price changes"""
@@ -71,6 +76,13 @@ class TradingAgent:
             required_change = base_threshold * threshold_config["volatility_multiplier"] * volatility_adjustment
             required_change = max(threshold_config["min_threshold"], 
                                 min(required_change, threshold_config["max_threshold"]))
+            
+            # Debug logging if enabled
+            if self.debug:
+                print(f"\nPrice Analysis:")
+                print(f"Current change: {market_data['change_24h']:.4f}%")
+                print(f"Required change: {required_change:.4f}%")
+                print(f"Volatility adjustment: {volatility_adjustment:.2f}")
             
             if abs(market_data["change_24h"]) < required_change:
                 return self._get_default_decision(

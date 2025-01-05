@@ -4,7 +4,7 @@
     "max_tokens": 500,
     "prompt_template": "Analyze the following market data and provide a trading decision:\n\nCurrent Price: ${price:.2f}\nVolume: {volume:.2f}\n24h Change: {change_24h:.2f}%\nHigh-Low Range: {high_low_range:.2f}%\nCurrent Position: {current_position:.3f}\nEntry Price: {entry_price}\n\nProvide your analysis and decision in the following format:\n\nAction: BUY/SELL/HOLD\nPosition size: (0-1)\nConfidence: (0-100)\nReasoning: Your analysis here",
     "trading_params": {
-        "min_confidence": 40,
+        "min_confidence": 30,
         "take_profit": [
             {
                 "target": 2.0,
@@ -25,10 +25,10 @@
         "activation_threshold": 3.0
     },
     "price_change_threshold": {
-        "base": 0.05,
+        "base": 0.02,
         "volatility_multiplier": 1.0,
-        "min_threshold": 0.01,
-        "max_threshold": 0.2
+        "min_threshold": 0.005,
+        "max_threshold": 0.1
     },
     "position_sizing": {
         "max_position_size": 1.0,

@@ -89,6 +89,7 @@ async def run_trading_bot(args):
     )
     
     trading_agent = TradingAgent(openai_client=openai_client, config_name=args.agent_config)
+    trading_agent.set_debug(args.debug)  # Set debug mode
     
     market_data = await fetch_market_data(args.exchange, args.symbol, args.timeframe)
     if market_data.empty:
@@ -184,6 +185,7 @@ async def run_backtest(args):
     )
     
     trading_agent = TradingAgent(openai_client=openai_client, config_name=args.agent_config)
+    trading_agent.set_debug(args.debug)  # Set debug mode
     backtester = Backtester(initial_balance=Decimal(args.initial_balance))
     
     # Fetch historical data with date range
@@ -214,6 +216,7 @@ def main():
     parser.add_argument('--symbol', type=str, required=True, help='Trading pair (e.g., BTC/USDT)')
     parser.add_argument('--exchange', type=str, default='binance', help='Exchange to use')
     parser.add_argument('--show-reasoning', action='store_true', help='Show agent reasoning')
+    parser.add_argument('--debug', action='store_true', help='Show debug information')
     parser.add_argument('--timeframe', type=str, default='1h', help='Trading timeframe')
     parser.add_argument('--backtest', action='store_true', help='Run in backtest mode')
     parser.add_argument('--backtest-days', type=int, help='Number of days to backtest')
