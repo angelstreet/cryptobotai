@@ -2,21 +2,62 @@ from typing import Dict, Any
 from openai import OpenAI
 import re
 from config import AgentConfig
+import numpy as np
+from datetime import datetime
 
 class TradingAgent:
     def __init__(self, openai_client: OpenAI, config_name: str = "default"):
         self.client = openai_client
         self.config = AgentConfig(config_name)
+        self.historical_data = []  # Store recent price data
+        self.current_position = 0.0  # Track current position size
+        self.entries = []  # List of dicts containing entry prices and amounts
+    
+    def _calculate_volatility(self, price_changes: list) -> float:
+        """Calculate volatility using standard deviation of recent price changes"""
+        if len(price_changes) < 2:
+            return 1.0
+        return np.std(price_changes) / np.mean(np.abs(price_changes))
+    
+    def update_position(self, action: str, amount: float, price: float):
+        """Update current position after a trade"""
+        if action == 'BUY':
+            self.current_position += amount
+            self.entries.append({
+                'price': price,
+                'amount': amount,
+                'timestamp': datetime.now()
+            })
+        elif action == 'SELL':
+            # Reduce position using FIFO (First In, First Out)
+            remaining_sell = amount
+            while remaining_sell > 0 and self.entries:
+                oldest_entry = self.entries[0]
+                if oldest_entry['amount'] <= remaining_sell:
+                    # Complete exit of this entry
+                    remaining_sell -= oldest_entry['amount']
+                    self.entries.pop(0)
+                else:
+                    # Partial exit of this entry
+                    oldest_entry['amount'] -= remaining_sell
+                    remaining_sell = 0
+            
+            self.current_position = max(0.0, self.current_position - amount)
     
     def generate_trading_decision(self, market_data: Dict[str, float]) -> Dict[str, Any]:
         """Generate trading decision based on market data"""
         try:
+            # Update historical data
+            self.historical_data.append(market_data["change_24h"])
+            if len(self.historical_data) > 24:  # Keep last 24 periods
+                self.historical_data.pop(0)
+            
             # Check price change threshold
             threshold_config = self.config.price_change_threshold
             base_threshold = threshold_config["base"]
             
-            # TODO: Calculate volatility adjustment based on recent price data
-            volatility_adjustment = 1.0
+            # Calculate volatility adjustment
+            volatility_adjustment = self._calculate_volatility(self.historical_data)
             
             required_change = base_threshold * threshold_config["volatility_multiplier"] * volatility_adjustment
             required_change = max(threshold_config["min_threshold"], 
@@ -24,13 +65,16 @@ class TradingAgent:
             
             if abs(market_data["change_24h"]) < required_change:
                 return self._get_default_decision(
-                    f"Price change ({market_data['change_24h']}%) below threshold ({required_change}%)")
+                    f"Price change ({market_data['change_24h']:.3f}%) below dynamic threshold ({required_change:.3f}%)")
             
             # Format prompt with market data
             prompt = self.config.prompt_template.format(
                 price=market_data["price"],
                 volume=market_data["volume"],
-                change_24h=market_data["change_24h"]
+                change_24h=market_data["change_24h"],
+                high_low_range=market_data["high_low_range"],
+                current_position=self.current_position,
+                entry_price=self.entries[-1]['price'] if self.entries else "None"
             )
             
             # Get response from model
@@ -104,6 +148,11 @@ class TradingAgent:
     def _apply_trading_params(self, decision: Dict[str, Any], market_data: Dict[str, float]) -> Dict[str, Any]:
         """Apply trading parameters from config"""
         params = self.config.trading_params
+        position_config = self.config.position_sizing
+        
+        # Force position size to 0 for HOLD
+        if decision['action'] == 'HOLD':
+            decision['amount'] = 0.0
         
         # Apply minimum confidence threshold
         if decision['confidence'] < params['min_confidence']:
@@ -112,12 +161,10 @@ class TradingAgent:
             decision['reasoning'] = f"Confidence ({decision['confidence']}%) below minimum threshold ({params['min_confidence']}%)"
         
         # Apply maximum position size
-        decision['amount'] = min(decision['amount'], params['max_position_size'])
+        decision['amount'] = min(decision['amount'], position_config['max_position_size'])
         
-        # Apply minimum price change threshold
-        if abs(market_data['change_24h']) < params['min_price_change']:
-            decision['action'] = 'HOLD'
-            decision['amount'] = 0.0
-            decision['reasoning'] = f"Price change ({market_data['change_24h']}%) below minimum threshold ({params['min_price_change']}%)"
+        # Ensure minimum position size for active trades
+        if decision['action'] != 'HOLD' and decision['amount'] < 0.1:
+            decision['amount'] = 0.1
         
         return decision 

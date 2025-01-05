@@ -84,7 +84,7 @@ async def run_trading_bot(args):
         args.exchange, 
         args.symbol, 
         args.timeframe,
-        start_date=datetime.now() - timedelta(days=7)  # Last 7 days of data
+        start_date=datetime.now() - timedelta(days=30)  # Last 30 days for better context
     )
     
     if market_data.empty:
@@ -94,21 +94,99 @@ async def run_trading_bot(args):
     # Get latest market data
     current_price = market_data['close'].iloc[-1]
     current_volume = market_data['volume'].iloc[-1]
-    price_change = (current_price - market_data['close'].iloc[-2]) / market_data['close'].iloc[-2] * 100
+    
+    # Calculate 24h metrics
+    last_24h_data = market_data.iloc[-24:] if len(market_data) >= 24 else market_data
+    price_24h_ago = market_data['close'].iloc[-25] if len(market_data) >= 25 else market_data['close'].iloc[0]
+    
+    # Calculate price changes
+    price_change_24h = ((current_price - price_24h_ago) / price_24h_ago) * 100
+    
+    # Calculate high-low range
+    high_24h = last_24h_data['high'].max()
+    low_24h = last_24h_data['low'].min()
+    high_low_range = ((high_24h - low_24h) / low_24h) * 100
+    
+    # Calculate recent price changes for volatility
+    price_changes = []
+    # Calculate 24h change using 24 hourly candles
+    price_24h_ago = market_data['close'].iloc[-25] if len(market_data) >= 25 else market_data['close'].iloc[0]
+    price_change_24h = ((current_price - price_24h_ago) / price_24h_ago) * 100
+    
+    for i in range(1, min(25, len(market_data))):
+        change = (market_data['close'].iloc[-i] - market_data['close'].iloc[-i-1]) / market_data['close'].iloc[-i-1] * 100
+        price_changes.append(change)
     
     decision = trading_agent.generate_trading_decision({
-        "price": current_price,
-        "volume": current_volume,
-        "change_24h": price_change
+        "price": float(current_price),
+        "volume": float(current_volume),
+        "change_24h": float(price_change_24h),
+        "high_low_range": float(high_low_range),
+        "high_24h": float(high_24h),
+        "low_24h": float(low_24h),
+        "historical_changes": price_changes
     })
     
+    # Update agent's position tracking
+    if decision['action'] in ['BUY', 'SELL']:
+        trading_agent.update_position(
+            decision['action'],
+            decision['amount'],
+            current_price
+        )
+    
     # Print analysis
-    print(f"\nTrading Analysis for {args.symbol}:")
+    print("\n" + "="*50)
+    print(f"TRADING ANALYSIS FOR {args.symbol}")
+    print("="*50)
+    
+    # Market Data Section
+    print("\nMarket Data:")
+    print("-"*30)
+    print(f"Current Price: ${float(current_price):.2f}")
+    print(f"24h Change: {price_change_24h:+.2f}%")
+    
+    if args.show_reasoning:
+        print(f"24h Volume: {float(current_volume):.2f}")
+        print(f"24h Range: {high_low_range:.2f}% (High: ${float(high_24h):.2f}, Low: ${float(low_24h):.2f})")
+        
+        # Volatility Analysis Section
+        print("\nVolatility Analysis:")
+        print("-"*30)
+        print("Recent price changes:")
+        for i, change in enumerate(price_changes[:5]):  # Show last 5 changes
+            print(f"  {i+1}h ago: {change:.3f}%")
+    
+    # Position Information Section
+    print("\nPosition Status:")
+    print("-"*30)
+    print(f"Current Position: {trading_agent.current_position:.3f}")
+    if trading_agent.entries:
+        print("\nEntry Points:")
+        for i, entry in enumerate(trading_agent.entries, 1):
+            profit_loss = ((current_price - entry['price']) / entry['price']) * 100
+            entry_str = f"  {i}. Amount: {entry['amount']:.3f} @ ${entry['price']:.2f}"
+            if args.show_reasoning:
+                entry_str += f" ({entry['timestamp'].strftime('%Y-%m-%d %H:%M')}) P/L: {profit_loss:+.2f}%"
+            print(entry_str)
+    else:
+        print("Entry Points: None (No active positions)")
+    
+    # Trading Decision Section
+    print("\nDecision:")
+    print("-"*30)
     print(f"Action: {decision['action']}")
     print(f"Position Size: {decision['amount']:.2f}")
-    print(f"Confidence: {decision['confidence']}%")
     if args.show_reasoning:
-        print(f"\nReasoning:\n{decision['reasoning']}")
+        print(f"Confidence: {decision['confidence']}%")
+    
+    if args.show_reasoning:
+        # Detailed Analysis Section
+        print("\nDetailed Analysis:")
+        print("-"*30)
+        print(f"Reasoning:\n{decision['reasoning']}")
+    
+    print("\n" + "="*50)
     
     # Create visualization if requested
     if args.advanced:

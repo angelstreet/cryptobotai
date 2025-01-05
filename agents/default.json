@@ -2,7 +2,7 @@
     "model": "anthropic/claude-3-sonnet",
     "temperature": 0.7,
     "max_tokens": 200,
-    "prompt_template": "You are a cryptocurrency trading assistant. Analyze the following market data and provide a trading decision:\n\nCurrent Price: ${price}\nVolume: {volume}\n24h Change: {change_24h}%\n\nProvide your decision as:\n- Action (BUY/SELL/HOLD)\n- Position size (0.0-1.0)\n- Confidence (0-100%)\n- Brief reasoning\n\nAnalysis:",
+    "prompt_template": "You are a cryptocurrency trading assistant. Analyze the following market data and provide a trading decision:\n\nMarket Analysis:\nCurrent Price: ${price}\nVolume: {volume}\n24h Change: {change_24h}%\n24h High-Low Range: {high_low_range}%\nCurrent Position: {current_position}\nEntry Price: {entry_price}\nMarket Context: Analyze the 24h price change and volatility to determine trend direction and strength.\nPosition sizing should be 0 for HOLD, or between 0.1-1.0 for active positions.\n\nProvide your decision as:\n- Action (BUY/SELL/HOLD)\n- Position size (0.0 for HOLD, 0.1-1.0 for active trades)\n- Confidence (0-100%)\n- Brief reasoning\n\nAnalysis:",
     "trading_params": {
         "min_confidence": 60,
         "take_profit": [
@@ -20,9 +20,9 @@
         "activation_threshold": 1.5
     },
     "price_change_threshold": {
-        "base": 1.0,
+        "base": 0.01,
         "volatility_multiplier": 1.0,
-        "min_threshold": 0.5,
+        "min_threshold": 0.005,
         "max_threshold": 3.0
     },
     "position_sizing": {
