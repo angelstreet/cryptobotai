@@ -186,7 +186,9 @@ class TradingAgent:
                         'HOLD': 'dim white'
                     }.get(decision['action'], 'dim white')
                     debug_str += f" | [{action_style}]{decision['action']}[/] ({decision['confidence']}%)"
-                    self.console.print(debug_str)
+                    # Only print debug line if not showing reasoning (to avoid duplicate)
+                    if not self.show_reasoning:
+                        self.console.print(debug_str)
                 
                 return decision
                 
@@ -241,7 +243,9 @@ class TradingAgent:
                     'HOLD': 'dim white'
                 }.get(decision['action'], 'dim white')
                 debug_str += f" | [{action_style}]{decision['action']}[/] ({decision['confidence']}%)"
-                self.console.print(debug_str)
+                # Only print debug line if not showing reasoning (to avoid duplicate)
+                if not self.show_reasoning:
+                    self.console.print(debug_str)
             
             return decision
             

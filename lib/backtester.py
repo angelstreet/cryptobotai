@@ -99,7 +99,9 @@ class Backtester:
                         f"Req: {required_change:.4f}% (Vol: {volatility_adjustment:.2f}x) | "
                         f"{decision['action']} ({decision['confidence']}%)"
                     )
-                    self.console.print(debug_str)
+                    # Only print debug line if not showing reasoning (to avoid duplicate)
+                    if not show_reasoning:
+                        self.console.print(debug_str)
                 
                 await asyncio.sleep(self.request_delay)  # Rate limiting
                 
