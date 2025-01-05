@@ -8,6 +8,7 @@ import pandas as pd
 from openai import OpenAI
 from agent import TradingAgent
 from backtester import Backtester
+from visualization import TradingVisualizer
 from datetime import datetime, timedelta
 
 async def fetch_market_data(
@@ -78,23 +79,53 @@ async def run_trading_bot(args):
     
     trading_agent = TradingAgent(openai_client=openai_client)
     
-    market_data = await fetch_market_data(args.exchange, args.symbol, args.timeframe)
+    # Fetch more historical data for context in live trading
+    market_data = await fetch_market_data(
+        args.exchange, 
+        args.symbol, 
+        args.timeframe,
+        start_date=datetime.now() - timedelta(days=7)  # Last 7 days of data
+    )
+    
     if market_data.empty:
         print("Error: Could not fetch market data")
         return
-        
+    
+    # Get latest market data
+    current_price = market_data['close'].iloc[-1]
+    current_volume = market_data['volume'].iloc[-1]
+    price_change = (current_price - market_data['close'].iloc[-2]) / market_data['close'].iloc[-2] * 100
+    
     decision = trading_agent.generate_trading_decision({
-        "price": market_data['close'].iloc[-1],
-        "volume": market_data['volume'].iloc[-1],
-        "change_24h": (market_data['close'].iloc[-1] - market_data['close'].iloc[-2]) / market_data['close'].iloc[-2] * 100
+        "price": current_price,
+        "volume": current_volume,
+        "change_24h": price_change
     })
     
+    # Print analysis
     print(f"\nTrading Analysis for {args.symbol}:")
     print(f"Action: {decision['action']}")
     print(f"Position Size: {decision['amount']:.2f}")
     print(f"Confidence: {decision['confidence']}%")
     if args.show_reasoning:
         print(f"\nReasoning:\n{decision['reasoning']}")
+    
+    # Create visualization if requested
+    if args.advanced:
+        # Create a mock trade for visualization
+        mock_trade = {
+            'timestamp': market_data['timestamp'].iloc[-1],
+            'action': decision['action'],
+            'price': float(current_price),
+            'amount': float(decision['amount']),
+            'fee': 0.0,
+            'balance': 0.0,
+            'position': 0.0,
+            'reasoning': decision['reasoning']
+        }
+        
+        visualizer = TradingVisualizer(market_data, [mock_trade])
+        visualizer.plot_chart(use_unicorn=args.unicorn)
 
 async def run_backtest(args):
     load_dotenv()
@@ -137,7 +168,7 @@ async def run_backtest(args):
     
     # Run backtest
     results = await backtester.run(trading_agent, market_data)
-    backtester.print_results(results)
+    backtester.print_results(results, show_advanced=args.advanced, use_unicorn=args.unicorn)
 
 def main():
     parser = argparse.ArgumentParser(description='Crypto AI Trading Bot')
@@ -150,6 +181,8 @@ def main():
     parser.add_argument('--start-date', type=str, help='Start date for backtest (DD/MM/YYYY)')
     parser.add_argument('--end-date', type=str, help='End date for backtest (DD/MM/YYYY)')
     parser.add_argument('--initial-balance', type=float, default=10000, help='Initial balance for backtest')
+    parser.add_argument('--advanced', action='store_true', help='Show advanced visualization')
+    parser.add_argument('--unicorn', action='store_true', help='Use unicorn terminal for visualization')
     
     asyncio.run(run_trading_bot(parser.parse_args()))
 

@@ -2,3 +2,7 @@ openai
 python-dotenv
 ccxt
 pandas
+matplotlib
+rich
+numpy
+mplfinance

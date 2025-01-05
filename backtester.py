@@ -3,6 +3,7 @@ from typing import Dict, List
 import pandas as pd
 from datetime import datetime
 from agent import TradingAgent
+from visualization import TradingVisualizer
 
 class Backtester:
     def __init__(self, 
@@ -12,8 +13,10 @@ class Backtester:
         self.trading_fee = trading_fee
         self.trades = []
         self.daily_logs = []
+        self.market_data = None
         
     async def run(self, agent: TradingAgent, market_data: pd.DataFrame) -> Dict:
+        self.market_data = market_data
         balance = self.initial_balance
         position = Decimal('0')
         max_balance = self.initial_balance
@@ -123,7 +126,7 @@ class Backtester:
             'daily_logs': self.daily_logs
         }
 
-    def print_results(self, results: Dict):
+    def print_results(self, results: Dict, show_advanced: bool = False, use_unicorn: bool = False):
         print("\n" + "=" * 50)
         print("BACKTEST RESULTS SUMMARY")
         print("=" * 50)
@@ -135,13 +138,6 @@ class Backtester:
         print(f"Maximum Drawdown: {results['max_drawdown']:.2f}%")
         print(f"Number of Trades: {results['n_trades']}")
         
-        if results['n_trades'] > 0:
-            print("\nTrade History:")
-            for trade in results['trades']:
-                print(f"\nDate: {trade['timestamp'].strftime('%Y-%m-%d %H:%M')}")
-                print(f"Action: {trade['action']}")
-                print(f"Price: ${trade['price']:.2f}")
-                print(f"Amount: {trade['amount']:.6f}")
-                print(f"Fee: ${trade['fee']:.2f}")
-                print(f"Reasoning: {trade['reasoning']}")
-                print("-" * 30) 
+        if show_advanced and self.market_data is not None:
+            visualizer = TradingVisualizer(self.market_data, self.trades)
+            visualizer.plot_chart(use_unicorn=use_unicorn) 
