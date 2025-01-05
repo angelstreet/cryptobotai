@@ -90,15 +90,6 @@ class Backtester:
                     required_change = max(threshold_config["min_threshold"], 
                                         min(required_change, threshold_config["max_threshold"]))
                     
-                    # Show trading params check first
-                    if decision['action'] != 'HOLD':
-                        self.console.print(f"[dim]Trading Params Check:[/] "
-                                         f"Min Conf: {agent.config.trading_params['min_confidence']}% "
-                                         f"(Got: {decision['confidence']}%) | "
-                                         f"Action: {decision['action']} | "
-                                         f"Size: {decision['amount']:.2f} | "
-                                         f"Position: {agent.current_position:.3f}")
-                    
                     debug_str = (
                         f"#{i+1:04d} | "
                         f"Price: ${float(current_data['close']):,.2f} | "

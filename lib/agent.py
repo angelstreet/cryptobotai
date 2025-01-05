@@ -72,6 +72,17 @@ class TradingAgent:
             if len(self.historical_data) > 24:  # Keep last 24 periods
                 self.historical_data.pop(0)
             
+            # Initialize debug string
+            debug_str = None
+            if self.debug:
+                debug_str = (
+                    f"#{market_data.get('candle_number', 0):04d} | "
+                    f"Price: ${market_data['price']:,.2f} | "
+                    f"Change: {market_data['change_24h']:+.4f}% | "
+                    f"Vol: {market_data['volume']:.2f} | "
+                    f"Pos: {self.current_position:.3f}"
+                )
+            
             # Check price change threshold
             threshold_config = self.config.price_change_threshold
             base_threshold = threshold_config["base"]
@@ -82,9 +93,17 @@ class TradingAgent:
             required_change = max(threshold_config["min_threshold"], 
                                 min(required_change, threshold_config["max_threshold"]))
             
+            # Add threshold info to debug string
+            if self.debug and debug_str:
+                debug_str += f" | Req: {required_change:.4f}% (Vol: {volatility_adjustment:.2f}x)"
+            
             if abs(market_data["change_24h"]) < required_change:
                 decision = self._get_default_decision(
                     f"Price change ({market_data['change_24h']:.3f}%) below dynamic threshold ({required_change:.3f}%)")
+                if self.debug and debug_str:
+                    debug_str += f" | HOLD (Below threshold)"
+                    if not self.show_reasoning:
+                        self.console.print(debug_str)
                 return decision
             
             # Format prompt with market data
