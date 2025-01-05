@@ -90,6 +90,15 @@ class Backtester:
                     required_change = max(threshold_config["min_threshold"], 
                                         min(required_change, threshold_config["max_threshold"]))
                     
+                    # Show trading params check first
+                    if decision['action'] != 'HOLD':
+                        self.console.print(f"[dim]Trading Params Check:[/] "
+                                         f"Min Conf: {agent.config.trading_params['min_confidence']}% "
+                                         f"(Got: {decision['confidence']}%) | "
+                                         f"Action: {decision['action']} | "
+                                         f"Size: {decision['amount']:.2f} | "
+                                         f"Position: {agent.current_position:.3f}")
+                    
                     debug_str = (
                         f"#{i+1:04d} | "
                         f"Price: ${float(current_data['close']):,.2f} | "
@@ -99,9 +108,7 @@ class Backtester:
                         f"Req: {required_change:.4f}% (Vol: {volatility_adjustment:.2f}x) | "
                         f"{decision['action']} ({decision['confidence']}%)"
                     )
-                    # Only print debug line if not showing reasoning (to avoid duplicate)
-                    if not show_reasoning:
-                        self.console.print(debug_str)
+                    self.console.print(debug_str)
                 
                 await asyncio.sleep(self.request_delay)  # Rate limiting
                 

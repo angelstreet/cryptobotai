@@ -72,42 +72,19 @@ class TradingAgent:
             if len(self.historical_data) > 24:  # Keep last 24 periods
                 self.historical_data.pop(0)
             
-            # Prepare debug string
-            debug_str = ""
-            if self.debug:
-                # Use info style for candle data, config color only for the config name
-                debug_str = (
-                    f"[dim]#{market_data.get('candle_number', 0):04d}[/] | "
-                    f"[dim]Price: [/]${market_data['price']:<10,.2f} | "
-                    f"[dim]Change: [/]"
-                    f"[{self._get_change_color(market_data['change_24h'])}]{market_data['change_24h']:>+7.4f}%[/] | "
-                    f"[dim]Vol: [/]{market_data['volume']:<8.2f} | "
-                    f"[dim]Pos: [/]{self.current_position:.3f}"
-                )
-            
             # Check price change threshold
             threshold_config = self.config.price_change_threshold
             base_threshold = threshold_config["base"]
             
             # Calculate volatility adjustment
             volatility_adjustment = self._calculate_volatility(self.historical_data)
-            
             required_change = base_threshold * threshold_config["volatility_multiplier"] * volatility_adjustment
             required_change = max(threshold_config["min_threshold"], 
                                 min(required_change, threshold_config["max_threshold"]))
             
-            if self.debug:
-                debug_str += (
-                    f" | [dim]Req:[/] {required_change:>6.4f}% "
-                    f"([dim]Vol:[/] {volatility_adjustment:<4.2f}x)"
-                )
-            
             if abs(market_data["change_24h"]) < required_change:
                 decision = self._get_default_decision(
                     f"Price change ({market_data['change_24h']:.3f}%) below dynamic threshold ({required_change:.3f}%)")
-                if self.debug and debug_str:
-                    debug_str += f" | [dim white]HOLD[/] (Below threshold)"
-                    self.console.print(debug_str)
                 return decision
             
             # Format prompt with market data
