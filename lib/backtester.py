@@ -35,23 +35,6 @@ class Backtester:
             print(f"\nStarting backtest simulation with {total_candles} candles...")
             print(f"Time range: {market_data['timestamp'].iloc[0]} to {market_data['timestamp'].iloc[-1]}\n")
             
-            current_day = None
-            progress_counter = 0
-            
-            for index, row in market_data.iterrows():
-                # Track progress by day
-                day = row['timestamp'].date()
-                if day != current_day:
-                    if current_day is not None:
-                        print(f"Processing {day}...")
-                    current_day = day
-                
-                # Show progress
-                progress = (progress_counter / total_candles) * 100
-                if progress_counter % 5 == 0 and progress > 0:  # Update every 5 candles, skip 0%
-                    print(f"Progress: {progress:.1f}%", end="\r")
-                progress_counter += 1
-            
             trades = []
             balance = self.initial_balance
             position = Decimal('0')
@@ -66,6 +49,11 @@ class Backtester:
                 if candle_date != current_date:
                     current_date = candle_date
                     print(f"Processing {current_date.strftime('%Y-%m-%d')}...")
+                
+                # Show progress
+                progress = ((i + 1) / total_candles) * 100
+                if i % max(1, total_candles // 10) == 0 and progress > 0:
+                    print(f"Progress: {progress:.1f}%", end="\r")
                 
                 current_data = market_data.iloc[i]
                 next_data = market_data.iloc[i + 1]

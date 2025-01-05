@@ -74,7 +74,8 @@ class TradingAgent:
                 debug_str = (
                     f"[dim]#{market_data.get('candle_number', 0):04d}[/] | "
                     f"[dim]Price: [/]${market_data['price']:<10,.2f} | "
-                    f"[dim]Change: [/]{market_data['change_24h']:>+7.4f}% | "
+                    f"[dim]Change: [/]"
+                    f"[{self._get_change_color(market_data['change_24h'])}]{market_data['change_24h']:>+7.4f}%[/] | "
                     f"[dim]Vol: [/]{market_data['volume']:<8.2f}"
                 )
             
@@ -92,13 +93,15 @@ class TradingAgent:
             if self.debug:
                 debug_str += (
                     f" | [dim]Req:[/] {required_change:>6.4f}% "
-                    f"([dim]Base:[/] {base_threshold:<6.4f}% × "
-                    f"[dim]Vol:[/] {volatility_adjustment:<4.2f})"
+                    f"([dim]Vol:[/] {volatility_adjustment:<4.2f}x)"
                 )
             
             if abs(market_data["change_24h"]) < required_change:
                 decision = self._get_default_decision(
                     f"Price change ({market_data['change_24h']:.3f}%) below dynamic threshold ({required_change:.3f}%)")
+                if self.debug and debug_str:
+                    debug_str += f" | [dim white]HOLD[/] (Below threshold)"
+                    self.console.print(debug_str)
                 return decision
             
             # Format prompt with market data
@@ -140,6 +143,12 @@ class TradingAgent:
             
             # Print debug info after decision is made
             if self.debug and debug_str:
+                action_style = {
+                    'BUY': 'buy',
+                    'SELL': 'sell',
+                    'HOLD': 'dim white'
+                }.get(decision['action'], 'dim white')
+                debug_str += f" | [{action_style}]{decision['action']}[/] ({decision['confidence']}%)"
                 self.console.print(debug_str)
             
             return decision
@@ -310,3 +319,9 @@ class TradingAgent:
             decision['amount'] = 0.1
         
         return decision 
+    
+    def _get_change_color(self, change: float) -> str:
+        """Return the appropriate color for a price change"""
+        if abs(change) < 0.0001:  # Effectively zero
+            return "dim white"
+        return "red" if change < 0 else "green" 
