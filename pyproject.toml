@@ -1,0 +1,6 @@
+[tool.poetry.dependencies]
+python = "^3.9"
+transformers = "^4.37.0"
+torch = "^2.2.0"
+openrouter-py = "^0.3.0"
+huggingface_hub = "^0.20.0" 
