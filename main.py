@@ -8,91 +8,51 @@ import pandas as pd
 from openai import OpenAI
 from lib.agent import TradingAgent
 from lib.backtester import Backtester
-from lib.visualization import TradingVisualizer
+from lib.display import console, print_trading_analysis, print_header, print_chart
 from datetime import datetime, timedelta
-from lib.display import console, print_trading_analysis
 
-async def fetch_market_data(
-    exchange: str, 
-    symbol: str, 
-    timeframe: str = '1h',
-    start_date: datetime = None,
-    end_date: datetime = None
-) -> pd.DataFrame:
-    try:
-        exchange_instance = getattr(ccxt, exchange)()
-        
-        # Convert dates to timestamps if provided
-        since = int(start_date.timestamp() * 1000) if start_date else None
-        until = int(end_date.timestamp() * 1000) if end_date else None
-        
-        # Fetch OHLCV data
-        ohlcv = []
-        if since:
-            while True:
-                data = exchange_instance.fetch_ohlcv(
-                    symbol, 
-                    timeframe, 
-                    since=since,
-                    limit=1000  # Most exchanges limit to 1000 candles per request
-                )
-                ohlcv.extend(data)
-                
-                if not data or (until and data[-1][0] >= until):
-                    break
-                    
-                since = data[-1][0] + 1  # Next candle timestamp
-                
-        else:
-            ohlcv = exchange_instance.fetch_ohlcv(symbol, timeframe, limit=1000)
-        
-        # Convert to DataFrame
-        df = pd.DataFrame(ohlcv, columns=['timestamp', 'open', 'high', 'low', 'close', 'volume'])
-        df['timestamp'] = pd.to_datetime(df['timestamp'], unit='ms')
-        
-        # Filter by date range if provided
-        if start_date:
-            df = df[df['timestamp'] >= start_date]
-        if end_date:
-            df = df[df['timestamp'] <= end_date]
-            
-        return df
-        
-    except Exception as e:
-        print(f"Error fetching market data: {e}")
-        return pd.DataFrame()
+def parse_args():
+    parser = argparse.ArgumentParser(description='Crypto AI Trading Bot')
+    parser.add_argument('--symbol', type=str, required=True, help='Trading pair (e.g., BTC/USDT)')
+    parser.add_argument('--exchange', type=str, default='binance', help='Exchange to use')
+    parser.add_argument('--show-reasoning', action='store_true', help='Show agent reasoning')
+    parser.add_argument('--debug', action='store_true', help='Show debug information')
+    parser.add_argument('--timeframe', type=str, default='1h', help='Trading timeframe')
+    parser.add_argument('--backtest', action='store_true', help='Run in backtest mode')
+    parser.add_argument('--backtest-days', type=int, help='Number of days to backtest')
+    parser.add_argument('--start-date', type=str, help='Start date for backtest (DD/MM/YYYY)')
+    parser.add_argument('--end-date', type=str, help='End date for backtest (DD/MM/YYYY)')
+    parser.add_argument('--initial-balance', type=float, default=10000, help='Initial balance for backtest')
+    parser.add_argument('--agent-config', type=str, default='default',
+                       choices=['default', 'conservative', 'aggressive', 'buytest'],
+                       help='Trading agent configuration to use')
+    parser.add_argument('--advanced', action='store_true', help='Show advanced visualization')
+    return parser.parse_args()
 
 async def run_trading_bot(args):
-    if args.backtest:
-        await run_backtest(args)
-        return
-    
     load_dotenv()
+    print_header(args.symbol)
     
-    # Configure AI client based on provider
-    provider = os.getenv("AI_PROVIDER", "openrouter").lower()
-    base_headers = {
-        "HTTP-Referer": os.getenv("APP_URL", "http://localhost:3000"),
-        "X-Title": os.getenv("APP_NAME", "Crypto AI Trading Bot")
-    }
-    
-    # Add provider-specific headers
-    if provider == "openrouter":
-        headers = base_headers
-    else:
-        headers = {}  # Default empty headers for other providers
-    
-    openai_client = OpenAI(
-        base_url=os.getenv("AI_API_URL"),
+    # Configure AI client using opensource OpenAI lib
+    ai_client = OpenAI(
         api_key=os.getenv("AI_API_KEY"),
-        default_headers=headers
+        base_url=os.getenv("AI_API_URL"),
+        default_headers={
+            "HTTP-Referer": os.getenv("APP_URL", "http://localhost:3000"),
+            "X-Title": os.getenv("APP_NAME", "Crypto AI Trading Bot")
+        } if os.getenv("AI_PROVIDER", "").lower() == "openrouter" else {}
     )
     
-    trading_agent = TradingAgent(openai_client=openai_client, config_name=args.agent_config)
-    trading_agent.set_debug(args.debug)  # Set debug mode
-    trading_agent.set_show_reasoning(args.show_reasoning)  # Set show reasoning mode
+    trading_agent = TradingAgent(ai_client=ai_client, config_name=args.agent_config)
+    trading_agent.set_debug(args.debug)
+    trading_agent.set_show_reasoning(args.show_reasoning)
     
-    market_data = await fetch_market_data(args.exchange, args.symbol, args.timeframe)
+    if args.backtest:
+        backtester = Backtester(initial_balance=Decimal(args.initial_balance))
+        await backtester.run_backtest(args, trading_agent)
+        return
+    
+    market_data = await trading_agent.fetch_market_data(args.exchange, args.symbol, args.timeframe)
     if market_data.empty:
         print("Error: Could not fetch market data")
         return
@@ -159,98 +119,10 @@ async def run_trading_bot(args):
             'reasoning': decision['reasoning']
         }
         
-        visualizer = TradingVisualizer(market_data, [mock_trade])
-        visualizer.plot_chart()
-
-async def run_backtest(args):
-    # Show header first
-    console.print("\n" + "=" * 50, style="header")
-    console.print(f"TRADING ANALYSIS FOR {args.symbol}", style="header")
-    console.print("=" * 50, style="header")
-    
-    load_dotenv()
-    
-    # Parse dates if provided
-    start_date = None
-    end_date = None
-    if args.start_date:
-        start_date = datetime.strptime(args.start_date, '%d/%m/%Y')
-    if args.end_date:
-        end_date = datetime.strptime(args.end_date, '%d/%m/%Y')
-    elif args.backtest_days:
-        end_date = datetime.now()
-        start_date = end_date - timedelta(days=args.backtest_days)
-    
-    openai_client = OpenAI(
-        base_url=os.getenv("AI_API_URL"),
-        api_key=os.getenv("AI_API_KEY"),
-        default_headers={
-            "HTTP-Referer": os.getenv("APP_URL", "http://localhost:3000"),
-            "X-Title": os.getenv("APP_NAME", "Crypto AI Trading Bot")
-        }
-    )
-    
-    trading_agent = TradingAgent(openai_client=openai_client, config_name=args.agent_config)
-    trading_agent.set_debug(args.debug)  # Set debug mode
-    trading_agent.set_show_reasoning(args.show_reasoning)  # Set show reasoning mode
-    backtester = Backtester(initial_balance=Decimal(args.initial_balance))
-    
-    # Fetch historical data with date range
-    market_data = await fetch_market_data(
-        args.exchange, 
-        args.symbol, 
-        args.timeframe,
-        start_date=start_date,
-        end_date=end_date
-    )
-    
-    if market_data.empty:
-        print("Error: Could not fetch market data")
-        return
-    
-    # Set symbol name in DataFrame
-    market_data.name = args.symbol
-    
-    # Run backtest
-    results = await backtester.run(trading_agent, market_data, args.show_reasoning)
-    if results['trades']:
-        backtester.print_results(results)
-    else:
-        console.print("\nNo trades executed during backtest period", style="info")
+        print_chart(market_data, [mock_trade])
 
 def main():
-    # TODO: Multi-Pair Trading Support
-    # 1. Add support for loading pair lists from config files
-    # 2. Implement parallel processing for multiple pairs
-    # 3. Add market scanner functionality
-    # 4. Implement cross-pair risk management
-    
-    # TODO: Config Optimization
-    # 1. Add --optimize flag for backtesting multiple configs
-    # 2. Implement quiet mode for batch testing
-    # 3. Add performance metrics calculation
-    # 4. Generate optimization reports
-    # Example future usage:
-    # python main.py --optimize --pairs top10 --days 30 --configs all
-    # python main.py --optimize --pairs BTC/USDT --days 30 --generate-config
-    
-    parser = argparse.ArgumentParser(description='Crypto AI Trading Bot')
-    parser.add_argument('--symbol', type=str, required=True, help='Trading pair (e.g., BTC/USDT)')
-    parser.add_argument('--exchange', type=str, default='binance', help='Exchange to use')
-    parser.add_argument('--show-reasoning', action='store_true', help='Show agent reasoning')
-    parser.add_argument('--debug', action='store_true', help='Show debug information')
-    parser.add_argument('--timeframe', type=str, default='1h', help='Trading timeframe')
-    parser.add_argument('--backtest', action='store_true', help='Run in backtest mode')
-    parser.add_argument('--backtest-days', type=int, help='Number of days to backtest')
-    parser.add_argument('--start-date', type=str, help='Start date for backtest (DD/MM/YYYY)')
-    parser.add_argument('--end-date', type=str, help='End date for backtest (DD/MM/YYYY)')
-    parser.add_argument('--initial-balance', type=float, default=10000, help='Initial balance for backtest')
-    parser.add_argument('--agent-config', type=str, default='default',
-                       choices=['default', 'conservative', 'aggressive', 'buytest'],
-                       help='Trading agent configuration to use')
-    parser.add_argument('--advanced', action='store_true', help='Show advanced visualization')
-    
-    asyncio.run(run_trading_bot(parser.parse_args()))
+    asyncio.run(run_trading_bot(parse_args()))
 
 if __name__ == "__main__":
     main() 

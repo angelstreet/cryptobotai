@@ -4,19 +4,13 @@ from typing import Dict, Any, List
 from dotenv import load_dotenv
 from rich.console import Console
 from rich.theme import Theme
+from .display import SHARED_THEME
 
 class AgentConfig:
     def __init__(self, config_name: str = "default"):
         load_dotenv()
         self.config_name = config_name
-        self.console = Console(theme=Theme({
-            "warning": "yellow",
-            "info": "blue",
-            "header": "bold white",
-            "aggressive": "red3",
-            "conservative": "bold blue",
-            "default": "dim white"
-        }))
+        self.console = Console(theme=SHARED_THEME)
         self.color_style = {
             "aggressive": "aggressive",
             "conservative": "conservative",

@@ -2,13 +2,15 @@ from openai import OpenAI
 import re
 from .config import AgentConfig
 import numpy as np
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Dict, Any
 import json
+import ccxt
+import pandas as pd
 
 class TradingAgent:
-    def __init__(self, openai_client: OpenAI, config_name: str = "default"):
-        self.client = openai_client
+    def __init__(self, ai_client: OpenAI, config_name: str = "default"):
+        self.client = ai_client
         self.config = AgentConfig(config_name)
         self.historical_data = []  # Store recent price data
         self.current_position = 0.0  # Track current position size
@@ -59,10 +61,7 @@ class TradingAgent:
     def _log_api_response(self, response, error=None):
         """Log API response or error for debugging"""
         if error:
-            print("\nAPI Response Log:")
-            print("=" * 50)
-            print(f"Error: {error}")
-            print("=" * 50)
+            self.console.print(f"API Error Response: {error}", style="error")
     
     def generate_trading_decision(self, market_data: Dict[str, float]) -> Dict[str, Any]:
         """Generate trading decision based on market data"""
@@ -433,3 +432,54 @@ class TradingAgent:
         if abs(change) < 0.0001:  # Effectively zero
             return "dim white"
         return "red" if change < 0 else "green" 
+    
+    async def fetch_market_data(
+        self,
+        exchange: str, 
+        symbol: str, 
+        timeframe: str = '1h',
+        start_date: datetime = None,
+        end_date: datetime = None
+    ) -> pd.DataFrame:
+        try:
+            exchange_instance = getattr(ccxt, exchange)()
+            
+            # Convert dates to timestamps if provided
+            since = int(start_date.timestamp() * 1000) if start_date else None
+            until = int(end_date.timestamp() * 1000) if end_date else None
+            
+            # Fetch OHLCV data
+            ohlcv = []
+            if since:
+                while True:
+                    data = exchange_instance.fetch_ohlcv(
+                        symbol, 
+                        timeframe, 
+                        since=since,
+                        limit=1000
+                    )
+                    ohlcv.extend(data)
+                    
+                    if not data or (until and data[-1][0] >= until):
+                        break
+                        
+                    since = data[-1][0] + 1
+                    
+            else:
+                ohlcv = exchange_instance.fetch_ohlcv(symbol, timeframe, limit=1000)
+            
+            # Convert to DataFrame
+            df = pd.DataFrame(ohlcv, columns=['timestamp', 'open', 'high', 'low', 'close', 'volume'])
+            df['timestamp'] = pd.to_datetime(df['timestamp'], unit='ms')
+            
+            # Filter by date range if provided
+            if start_date:
+                df = df[df['timestamp'] >= start_date]
+            if end_date:
+                df = df[df['timestamp'] <= end_date]
+                
+            return df
+            
+        except Exception as e:
+            print(f"Error fetching market data: {e}")
+            return pd.DataFrame() 

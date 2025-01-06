@@ -1,14 +1,13 @@
 from decimal import Decimal
 from typing import Dict, List, Any
 import pandas as pd
-from datetime import datetime
+from datetime import datetime, timedelta
 import asyncio
 from .agent import TradingAgent
-from .visualization import TradingVisualizer
 from rich.console import Console
 from rich.table import Table
 from rich.theme import Theme
-from .display import console, print_trading_analysis
+from .display import console, print_trading_analysis, print_chart
 
 # Use same theme as main.py
 custom_theme = Theme({
@@ -215,3 +214,39 @@ class Backtester:
                 console.print(trade_str, style=action_style)
         
         console.print("\n" + "=" * 50, style="header") 
+    
+    async def run_backtest(self, args, trading_agent):
+        """Run backtest with given arguments"""
+        # Parse dates if provided
+        start_date = None
+        end_date = None
+        if args.start_date:
+            start_date = datetime.strptime(args.start_date, '%d/%m/%Y')
+        if args.end_date:
+            end_date = datetime.strptime(args.end_date, '%d/%m/%Y')
+        elif args.backtest_days:
+            end_date = datetime.now()
+            start_date = end_date - timedelta(days=args.backtest_days)
+        
+        # Fetch historical data with date range
+        market_data = await trading_agent.fetch_market_data(
+            args.exchange, 
+            args.symbol, 
+            args.timeframe,
+            start_date=start_date,
+            end_date=end_date
+        )
+        
+        if market_data.empty:
+            print("Error: Could not fetch market data")
+            return
+        
+        # Set symbol name in DataFrame
+        market_data.name = args.symbol
+        
+        # Run backtest
+        results = await self.run(trading_agent, market_data, args.show_reasoning)
+        if results['trades']:
+            self.print_results(results)
+        else:
+            console.print("\nNo trades executed during backtest period", style="info") 
