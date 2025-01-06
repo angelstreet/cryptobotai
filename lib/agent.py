@@ -157,16 +157,16 @@ class TradingAgent:
                         self.console.print(debug_str)
                     
                     self.console.print(f"[bold cyan]Candle #{market_data.get('candle_number', 0)}:[/] "
-                                      f"[bold]Config:[/] Min Conf: {self.config.trading_params['min_confidence']}% | "
-                                      f"Base Thresh: {self.config.price_change_threshold['base']:.4f}% | "
-                                      f"Pos Range: {self.config.position_sizing['min_position_size']:.1f}-{self.config.position_sizing['max_position_size']:.1f} | "
-                                      f"SL: {self.config.stop_loss['initial']:.1f}% (Trail: {self.config.stop_loss['trailing']:.1f}%) | "
-                                      f"[bold]Market:[/] Change: {market_data['change_24h']:+.4f}% (Req: {required_change:.4f}%) | "
-                                      f"Vol: {market_data['volume']:.2f} | "
-                                      f"H-L Range: {market_data['high_low_range']:.2f}% | "
-                                      f"Position: {self.current_position:.3f} | "
-                                      f"[bold]Decision:[/] {decision['action']} | Size: {decision['amount']:.2f} | AI Conf: {decision['confidence']}% | "
-                                      f"[bold]Reason:[/] {decision['reasoning']}")
+                                     f"[bold]Config:[/] Min Conf: {self.config.trading_params['min_confidence']}% | "
+                                     f"Base Thresh: {self.config.price_change_threshold['base']:.4f}% | "
+                                     f"Pos Range: {self.config.position_sizing['min_position_size']:.1f}-{self.config.position_sizing['max_position_size']:.1f} | "
+                                     f"SL: {self.config.stop_loss['initial']:.1f}% (Trail: {self.config.stop_loss['trailing']:.1f}%) | "
+                                     f"[bold]Market:[/] Change: {market_data['change_24h']:+.4f}% (Req: {required_change:.4f}%) | "
+                                     f"Vol: {market_data['volume']:.2f} | "
+                                     f"H-L Range: {market_data['high_low_range']:.2f}% | "
+                                     f"Position: {self.current_position:.3f} | "
+                                     f"[bold]Decision:[/] {decision['action']} | Size: {decision['amount']:.2f} | AI Conf: {decision['confidence']}% | "
+                                     f"[bold]Reason:[/] {decision['reasoning']}")
                 
                 # Apply trading parameters
                 decision = self._apply_trading_params(decision, market_data)
@@ -179,7 +179,6 @@ class TradingAgent:
                         'HOLD': 'dim white'
                     }.get(decision['action'], 'dim white')
                     debug_str += f" | [{action_style}]{decision['action']}[/] ({decision['confidence']}%)"
-                    # Only print debug line if not showing reasoning (to avoid duplicate)
                     if not self.show_reasoning:
                         self.console.print(debug_str)
                 
@@ -196,59 +195,6 @@ class TradingAgent:
                 
                 self._log_api_response(None, error=error_msg)
                 return self._get_default_decision(f"API error: {api_error}")
-            
-            # Check if we got a valid response
-            if not response or not response.choices or not response.choices[0].message:
-                self.console.print("[bold yellow]Warning:[/] Received invalid response from API")
-                return self._get_default_decision("API response invalid")
-            
-            # Debug decision-making process
-            if self.show_reasoning:
-                self.console.print("\n[bold cyan]Decision Analysis:[/]")
-                self.console.print("=" * 50)
-                
-                # Show relevant configuration parameters
-                self.console.print("\n[bold]Config Parameters:[/]")
-                self.console.print(f"Min Confidence: {self.config.trading_params['min_confidence']}%")
-                self.console.print(f"Base Threshold: {self.config.price_change_threshold['base']:.4f}%")
-                self.console.print(f"Position Size Range: {self.config.position_sizing['min_position_size']:.1f} - {self.config.position_sizing['max_position_size']:.1f}")
-                self.console.print(f"Stop Loss: {self.config.stop_loss['initial']:.1f}% | Trailing: {self.config.stop_loss['trailing']:.1f}%")
-                
-                # Show market conditions
-                self.console.print("\n[bold]Market Conditions:[/]")
-                self.console.print(f"Price Change: {market_data['change_24h']:+.4f}% (Required: {required_change:.4f}%)")
-                self.console.print(f"Volume: {market_data['volume']:.2f}")
-                self.console.print(f"High-Low Range: {market_data['high_low_range']:.2f}%")
-                self.console.print(f"Current Position: {self.current_position:.3f}")
-                
-                # Show AI decision and reasoning
-                self.console.print("\n[bold]AI Decision:[/]")
-                self.console.print(f"Action: {decision['action']}")
-                self.console.print(f"Size: {decision['amount']:.2f}")
-                self.console.print(f"Confidence: {decision['confidence']}%")
-                self.console.print(f"\nReasoning: {decision['reasoning']}")
-                self.console.print("\n" + "=" * 50)
-            
-            # Apply trading parameters
-            decision = self._apply_trading_params(decision, market_data)
-            
-            # Show final decision after parameters
-            if self.show_reasoning:  # Only show when --show-reasoning is enabled
-                self.console.print(f"Final Decision after params: {decision}")
-            
-            # Print debug info after decision is made
-            if self.debug and debug_str:
-                action_style = {
-                    'BUY': 'buy',
-                    'SELL': 'sell',
-                    'HOLD': 'dim white'
-                }.get(decision['action'], 'dim white')
-                debug_str += f" | [{action_style}]{decision['action']}[/] ({decision['confidence']}%)"
-                # Only print debug line if not showing reasoning (to avoid duplicate)
-                if not self.show_reasoning:
-                    self.console.print(debug_str)
-            
-            return decision
             
         except Exception as e:
             print(f"Error generating trading decision: {e}")
