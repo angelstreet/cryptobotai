@@ -75,3 +75,30 @@ def print_chart(market_data, trades):
     
     fig.update_layout(title='Trading Chart with Signals')
     fig.show() 
+
+def print_backtest_results(results: Dict):
+    """Print backtest results"""
+    console.print("\n" + "=" * 50, style="header")
+    console.print("BACKTEST RESULTS", style="header")
+    console.print("=" * 50, style="header")
+    
+    # Performance metrics
+    console.print("\nPerformance Metrics:", style="info")
+    console.print("-" * 30)
+    console.print(f"Initial Balance: ${results['initial_balance']:,.2f}")
+    console.print(f"Final Balance: ${results['final_balance']:,.2f}")
+    
+    total_return = ((results['final_balance'] - results['initial_balance']) / results['initial_balance']) * 100
+    return_str = f"Total Return: {total_return:+.2f}%"
+    console.print(return_str, style="profit" if total_return > 0 else "loss")
+
+def print_debug_info(debug_str: str, decision: Dict[str, Any], show_reasoning: bool = False):
+    """Print debug information"""
+    if not show_reasoning:
+        action_style = {
+            'BUY': 'buy',
+            'SELL': 'sell',
+            'HOLD': 'dim white'
+        }.get(decision['action'], 'dim white')
+        debug_str += f" | [{action_style}]{decision['action']}[/] ({decision['confidence']}%)"
+        console.print(debug_str) 

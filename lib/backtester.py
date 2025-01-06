@@ -7,7 +7,7 @@ from .agent import TradingAgent
 from rich.console import Console
 from rich.table import Table
 from rich.theme import Theme
-from .display import console, print_trading_analysis, print_chart
+from .display import console, print_trading_analysis, print_chart, print_backtest_results
 
 # Use same theme as main.py
 custom_theme = Theme({
@@ -169,51 +169,7 @@ class Backtester:
             }
     
     def print_results(self, results: Dict):
-        """Print backtest results"""
-        console.print("\n" + "=" * 50, style="header")
-        console.print("BACKTEST RESULTS", style="header")
-        console.print("=" * 50, style="header")
-        
-        # Performance metrics
-        console.print("\nPerformance Metrics:", style="info")
-        console.print("-" * 30)
-        console.print(f"Initial Balance: ${self.initial_balance:,.2f}")
-        console.print(f"Final Balance: ${results['final_balance']:,.2f}")
-        
-        total_return = ((results['final_balance'] - self.initial_balance) / self.initial_balance) * 100
-        return_str = f"Total Return: {total_return:+.2f}%"
-        console.print(return_str, style="profit" if total_return > 0 else "loss")
-        
-        # Trade statistics
-        console.print("\nTrade Statistics:", style="info")
-        console.print("-" * 30)
-        console.print(f"Total Trades: {len(results['trades'])}")
-        
-        if results['trades']:
-            wins = sum(1 for t in results['trades'] if t['profit'] > 0)
-            losses = sum(1 for t in results['trades'] if t['profit'] < 0)
-            win_rate = (wins / len(results['trades'])) * 100
-            
-            console.print(f"Winning Trades: {wins}", style="profit")
-            console.print(f"Losing Trades: {losses}", style="loss")
-            console.print(f"Win Rate: {win_rate:.1f}%")
-            
-            # Trade list
-            console.print("\nTrade History:", style="info")
-            console.print("-" * 30)
-            for trade in results['trades']:
-                date = trade['timestamp'].strftime('%Y-%m-%d %H:%M')
-                profit_pct = (trade['profit'] / trade['cost']) * 100 if trade['cost'] > 0 else 0
-                trade_str = f"{date} | {trade['action']} | Amount: {trade['amount']:.3f} @ ${trade['price']:,.2f} | "
-                if profit_pct != 0:
-                    trade_str += f"P/L: [{'profit' if profit_pct > 0 else 'loss'}]{profit_pct:+.2f}%[/]"
-                else:
-                    trade_str += "P/L: 0.00%"
-                
-                action_style = "buy" if trade['action'] == "BUY" else "sell"
-                console.print(trade_str, style=action_style)
-        
-        console.print("\n" + "=" * 50, style="header") 
+        print_backtest_results(results)
     
     async def run_backtest(self, args, trading_agent):
         """Run backtest with given arguments"""

@@ -4,3 +4,10 @@ transformers = "^4.37.0"
 torch = "^2.2.0"
 openrouter-py = "^0.3.0"
 huggingface_hub = "^0.20.0" 
+
+[tool.poetry]
+include = ["lib/py.typed"]
+
+[tool.mypy]
+python_version = "3.10"
+strict = true 

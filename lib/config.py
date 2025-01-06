@@ -37,20 +37,30 @@ class AgentConfig:
             }
         }
         self.config = self._load_config()
-        # Override model from environment if set
-        self.config["model"] = os.getenv("AI_MODEL", self.config["model"])
+        
+        # Get provider-specific settings
+        provider = os.getenv("AI_PROVIDER", "OPENAI").upper()
+        self.config["model"] = os.getenv(f"{provider}_MODEL")  # Use provider's model
+        self.config["temperature"] = float(os.getenv(f"{provider}_TEMPERATURE", "0.7"))
+        self.config["max_tokens"] = int(os.getenv(f"{provider}_MAX_TOKENS", "200"))
+        
         self._validate_config()
     
     def _load_config(self) -> Dict[str, Any]:
         """Load agent configuration from JSON file"""
-        config_path = os.path.join(
-            "agents",
-            f"{self.config_name}.json"
-        )
+        config_path = os.path.join("agents", f"{self.config_name}.json")
         
         try:
             with open(config_path, 'r') as f:
-                return json.load(f)
+                config = json.load(f)
+                
+            # Override with environment variables if set
+            if os.getenv("AI_TEMPERATURE"):
+                config["temperature"] = float(os.getenv("AI_TEMPERATURE"))
+            if os.getenv("AI_MAX_TOKENS"):
+                config["max_tokens"] = int(os.getenv("AI_MAX_TOKENS"))
+            
+            return config
         except FileNotFoundError:
             print(f"Warning: Config '{self.config_name}' not found, using default")
             with open(os.path.join("agents", "default.json"), 'r') as f:
