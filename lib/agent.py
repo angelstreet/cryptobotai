@@ -29,7 +29,7 @@ class TradingAgent:
         """Calculate volatility using standard deviation of recent price changes"""
         if len(price_changes) < 2:
             return 1.0
-        return np.std(price_changes) / np.mean(np.abs(price_changes))
+        return float(np.std(price_changes) / np.mean(np.abs(price_changes)))
     
     def update_position(self, action: str, amount: float, price: float):
         """Update current position after a trade"""
@@ -137,7 +137,7 @@ class TradingAgent:
                     temperature=self.config.temperature,
                     max_tokens=self.config.max_tokens
                 )
-                decision = self._parse_response(response.choices[0].message.content)
+                decision = self._parse_response(response.choices[0].message.content or "")
                 
                 if self.show_reasoning:
                     # Print separator before each candle analysis
