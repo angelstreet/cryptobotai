@@ -1,6 +1,29 @@
-[tool.poetry.dependencies]
-python = "^3.9"
-transformers = "^4.37.0"
-torch = "^2.2.0"
-openrouter-py = "^0.3.0"
-huggingface_hub = "^0.20.0" 
+[build-system]
+requires = ["setuptools>=42", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "cryptobotai"
+version = "0.1.0"
+description = "Crypto AI Trading Bot"
+requires-python = ">=3.8"
+dependencies = [
+    "openai",
+    "python-dotenv",
+    "ccxt",
+    "aiohttp",
+    "pandas",
+    "matplotlib",
+    "rich",
+    "numpy",
+    "mplfinance"
+]
+
+[tool.pyright]
+include = ["lib", "main.py"]
+exclude = ["**/__pycache__"]
+pythonVersion = "3.13"
+typeCheckingMode = "basic"
+
+[tool.setuptools]
+packages = ["lib"] 

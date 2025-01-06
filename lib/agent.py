@@ -59,10 +59,7 @@ class TradingAgent:
     def _log_api_response(self, response, error=None):
         """Log API response or error for debugging"""
         if error:
-            print("\nAPI Response Log:")
-            print("=" * 50)
-            print(f"Error: {error}")
-            print("=" * 50)
+            self.console.print(f"\n[bold red]API Response Error:[/] {error}")
     
     def generate_trading_decision(self, market_data: Dict[str, float]) -> Dict[str, Any]:
         """Generate trading decision based on market data"""
@@ -189,12 +186,20 @@ class TradingAgent:
                 return decision
                 
             except Exception as api_error:
-                self._log_api_response(None, error=str(api_error))
+                error_msg = str(api_error)
+                if "rate limit" in error_msg.lower():
+                    self.console.print(f"\n[bold red]API Rate Limit Exceeded:[/] Please wait before making more requests")
+                elif "None" in error_msg:
+                    self.console.print(f"\n[bold red]API Response Error:[/] Invalid or empty response from API")
+                else:
+                    self.console.print(f"\n[bold red]API Error:[/] {error_msg}")
+                
+                self._log_api_response(None, error=error_msg)
                 return self._get_default_decision(f"API error: {api_error}")
             
             # Check if we got a valid response
             if not response or not response.choices or not response.choices[0].message:
-                print("Warning: Received invalid response from API")
+                self.console.print("[bold yellow]Warning:[/] Received invalid response from API")
                 return self._get_default_decision("API response invalid")
             
             # Debug decision-making process
