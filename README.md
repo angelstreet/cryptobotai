@@ -1,27 +1,33 @@
 # CryptobotAI: AI-Powered Cryptocurrency Trading Bot  
 
-A sophisticated cryptocurrency trading bot that leverages **OpenAI's Claude-3 model** for market analysis and automated trading decisions. This project is forked from [Virattt's AI Hedge Fund](https://github.com/virattt/ai-hedge-fund) and customized to focus on cryptocurrency markets.  
+A sophisticated cryptocurrency trading bot that leverages multiple AI providers for market analysis and automated trading decisions:
+- 🤖 **OpenAI**: GPT-3.5/4 models
+- 🧠 **Claude**: Anthropic's Claude models
+- 🌐 **OpenRouter**: Access to various open-source models
+- 💻 **Local LLMs**: Run models locally using Ollama
 
----
+## Features  
 
-## **Features**  
+### Core Features  
+- 🤖 **Multiple AI Provider Support**: 
+  - OpenAI GPT models
+  - Anthropic Claude
+  - OpenRouter models
+  - Local models via Ollama
+- 📊 **Real-Time Market Data**: Fetches data via CCXT
+- 🔄 **Advanced Backtesting Engine**
+- 📈 **Performance Tracking**
+- 💼 **Multi-Exchange Support**
+- ⚙️ **Configurable Trading Parameters**
 
-### **Core Features**  
-- 🤖 **AI-Powered Trading Decisions**: Utilizes Claude-3 for real-time market analysis and decision-making.  
-- 📊 **Real-Time Market Data**: Fetches data via CCXT for accurate and up-to-date market insights.  
-- 🔄 **Advanced Backtesting Engine**: Test strategies on historical data before deploying them live.  
-- 📈 **Performance Tracking**: Detailed analytics and trade logging for performance evaluation.  
-- 💼 **Multi-Exchange Support**: Integrates with popular exchanges like Binance, Coinbase Pro, and more.  
-- ⚙️ **Configurable Trading Parameters**: Customize strategies, risk management, and trading parameters.  
-
-### **Trading Features**  
+### Trading Features  
 - Real-time market analysis.  
 - Dynamic position sizing.  
 - Risk management controls.  
 - Trading fee consideration.  
 - Multiple timeframe support.  
 
-### **Backtesting Features**  
+### Backtesting Features  
 - **Flexible Date Range**: Backtest over a specific date range or a number of days.  
 - **Historical Data Fetching**: Automatically fetches and filters historical data for the specified period.  
 - **Pagination Handling**: Supports longer time ranges by handling pagination seamlessly.  
@@ -39,29 +45,67 @@ A sophisticated cryptocurrency trading bot that leverages **OpenAI's Claude-3 mo
    ```  
 
 2. **Configure `.env`**:  
-   Rename `.env.example` to `.env` and add your API keys:  
+   Rename `.env.example` to `.env` and configure your preferred AI provider:
+
+   **For OpenAI**:
    ```env
-   OPENROUTER_API_KEY=your_api_key_here
-   APP_URL=http://localhost:3000
-   APP_NAME=Crypto AI Trading Bot
-   ```  
+   AI_PROVIDER=OPENAI
+   OPENAI_API_KEY=your_key_here
+   OPENAI_MODEL=gpt-3.5-turbo
+   ```
 
-3. **Run the Bot**:  
+   **For Local LLM (Ollama)**:
+   ```env
+   AI_PROVIDER=LOCAL
+   LOCAL_API_URL=http://localhost:11434
+   LOCAL_MODEL=llama2
+   ```
 
-   **Live Trading**:  
+3. **For Local LLM Setup**:
+   ```bash
+   # Install Ollama
+   curl https://ollama.ai/install.sh | sh
+   
+   # Pull your preferred model
+   ollama pull llama2  # or mistral, codellama, etc.
+   
+   # Start Ollama
+   ollama serve
+   ```
+
+4. **Run the Bot**:  
    ```bash
    python main.py --symbol BTC/USDT --show-reasoning
-   ```  
+   ```
 
-   **Backtesting with Date Range**:  
-   ```bash
-   python main.py --symbol BTC/USDT --backtest --start-date 01/12/2024 --end-date 30/12/2024 --initial-balance 10000
-   ```  
+## AI Provider Configuration
 
-   **Backtesting with Number of Days**:  
-   ```bash
-   python main.py --symbol BTC/USDT --backtest --backtest-days 30 --initial-balance 10000
-   ```  
+### OpenAI
+- Requires API key
+- Supports GPT-3.5 and GPT-4 models
+- Best for high-accuracy trading decisions
+
+### Claude
+- Requires Anthropic API key
+- Supports Claude-3 models
+- Excellent for detailed market analysis
+
+### OpenRouter
+- Access to various open-source models
+- Requires OpenRouter API key
+- Good for testing different models
+
+### Local LLM (Ollama)
+- No API key required
+- Run models locally
+- Supported models:
+  - llama2
+  - mistral
+  - codellama
+  - neural-chat
+  - and more
+- Great for testing and development
+- Lower latency, no API costs
 
 ---
 
