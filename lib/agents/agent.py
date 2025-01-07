@@ -1,14 +1,14 @@
 from openai import OpenAI
 from anthropic import Anthropic
 import re
-from .config import AgentConfig
+from lib.config.config import AgentConfig
 import numpy as np
 from datetime import datetime, timedelta
 from typing import Dict, Any
 import json
 import ccxt
 import pandas as pd
-from .display import print_debug_info
+from lib.utils.display import console, print_debug_info
 import os
 
 class TradingAgent:

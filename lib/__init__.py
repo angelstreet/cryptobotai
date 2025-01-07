@@ -1,4 +1,4 @@
-from .agent import TradingAgent
-from .backtester import Backtester
-from .config import AgentConfig
-from .display import console, print_trading_analysis, print_header, print_chart
+from lib.agents.agent import TradingAgent
+from lib.backtester import Backtester
+
+__all__ = ['TradingAgent', 'Backtester']

@@ -1,13 +1,13 @@
 from decimal import Decimal
-from typing import Dict, List, Any
-import pandas as pd
 from datetime import datetime, timedelta
-import asyncio
-from .agent import TradingAgent
-from rich.console import Console
+import pandas as pd
 from rich.table import Table
 from rich.theme import Theme
-from .display import console, print_trading_analysis, print_chart, print_backtest_results
+from lib.utils.display import console, print_backtest_results
+from typing import Dict, Any, List
+from rich.console import Console
+import asyncio
+from lib.agents.agent import TradingAgent
 
 # Use same theme as main.py
 custom_theme = Theme({

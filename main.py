@@ -5,14 +5,13 @@ import os
 import asyncio
 import ccxt
 import pandas as pd
-from openai import OpenAI
-from anthropic import Anthropic
-from lib.agent import TradingAgent
+from lib.agents.agent import TradingAgent
 from lib.backtester import Backtester
-from lib.display import console, print_trading_analysis, print_header, print_chart
+from lib.utils.display import console, print_trading_analysis, print_header, print_chart
+from lib.utils.api import get_ai_credentials, get_ai_client
 from datetime import datetime, timedelta
 import signal
-import requests  # For local LLM API calls
+from lib.config.agent_config import AgentConfig
 
 def parse_args():
     parser = argparse.ArgumentParser(description='Crypto AI Trading Bot')
@@ -31,84 +30,6 @@ def parse_args():
                        help='Trading agent configuration to use')
     parser.add_argument('--advanced', action='store_true', help='Show advanced visualization')
     return parser.parse_args()
-
-def get_ai_credentials():
-    provider = os.getenv("AI_PROVIDER", "OPENAI").upper()
-    
-    # Get provider-specific settings
-    credentials = {
-        "api_key": os.getenv(f"{provider}_API_KEY"),
-        "base_url": os.getenv(f"{provider}_API_URL"),
-        "model": os.getenv(f"{provider}_MODEL"),
-        "temperature": float(os.getenv(f"{provider}_TEMPERATURE", "0.7")),
-        "max_tokens": int(os.getenv(f"{provider}_MAX_TOKENS", "200")),
-        "headers": {}
-    }
-    
-    # Handle OpenRouter specific configuration
-    if provider == "OPENROUTER":
-        credentials["model"] = os.getenv("AI_MODEL")
-        credentials["headers"].update({
-            "HTTP-Referer": os.getenv("APP_URL", "http://localhost:3000"),
-            "X-Title": os.getenv("APP_NAME", "Crypto AI Trading Bot")
-        })
-    
-    if provider == "OPENAI":
-        credentials["model"] = os.getenv("OPENAI_MODEL")
-    
-    return credentials
-
-def get_ai_client(creds):
-    """Get the appropriate AI client based on provider"""
-    provider = os.getenv("AI_PROVIDER", "OPENAI").upper()
-    
-    if provider == "LOCAL":
-        # Return a wrapper for Ollama API
-        class OllamaLLM:
-            def __init__(self, base_url):
-                self.base_url = base_url
-                
-            def chat_completions_create(self, **kwargs):
-                # Convert OpenAI format to Ollama format
-                messages = kwargs.get('messages', [])
-                prompt = "\n".join([m["content"] for m in messages])
-                
-                # Ollama parameters
-                # https://github.com/ollama/ollama/blob/main/docs/api.md#parameters
-                response = requests.post(
-                    f"{self.base_url}/api/generate",
-                    json={
-                        "model": kwargs.get('model', 'llama2'),
-                        "prompt": prompt,
-                        "stream": False,
-                        "options": {
-                            "num_predict": 100,  # Similar to max_tokens
-                            "top_p": 0.9,       # Alternative to temperature
-                            "stop": ["</response>", "Action:"]  # Stop sequences
-                        }
-                    }
-                )
-                
-                # Convert Ollama response to OpenAI format
-                result = response.json()
-                return {
-                    "choices": [{
-                        "message": {
-                            "content": result.get('response', '')
-                        }
-                    }]
-                }
-        
-        return OllamaLLM(creds["base_url"])
-    elif provider == "CLAUDE":
-        return Anthropic(api_key=creds["api_key"])
-    else:
-        return OpenAI(
-            api_key=creds["api_key"],
-            base_url=creds["base_url"],
-            default_headers=creds["headers"],
-            timeout=30.0
-        )
 
 async def run_trading_bot(args):
     try:
@@ -170,7 +91,9 @@ async def run_trading_bot(args):
         console.print("\nExiting...", style="info")
 
 def main():
-    asyncio.run(run_trading_bot(parse_args()))
+    args = parse_args()
+    config = AgentConfig(args.agent_config)
+    asyncio.run(run_trading_bot(args))
 
 if __name__ == "__main__":
     main() 
