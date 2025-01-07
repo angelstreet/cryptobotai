@@ -1,8 +1,4 @@
 {
-    "model": "mistralai/mistral-7b-instruct",
-    "temperature": 0.7,
-    "max_tokens": 200,
-    "prompt_template": "You are a trading assistant configured with aggressive trading parameters. Your decisions should reflect this high-risk, high-reward strategy.\\n\\nStrategy Configuration:\\n- Trading Style: Aggressive with high risk tolerance\\n- Risk Profile: High (Stop Loss: {stop_loss:.1f}%, Trailing: {trailing_stop:.1f}%)\\n- Position Limits: {min_size:.1f} to {max_size:.1f} units\\n- Take Profit: {take_profit_str}\\n- Minimum Price Movement: {required_change:.4f}% (Base: {base_threshold:.4f}%)\\n- Volatility Adjustment: {volatility_mult:.1f}x\\n\\nDecision Rules:\\n1. BUY aggressively when:\\n   - Price change exceeds {required_change:.4f}%\\n   - Volume shows strong momentum\\n   - Position size up to {max_size:.1f}\\n2. SELL quickly on:\\n   - Trend reversal\\n   - Stop loss hit\\n3. HOLD only during consolidation\\n\\nMarket Data:\\nCurrent Price: ${price:.2f}\\nVolume: {volume:.2f}\\n24h Change: {change_24h:.2f}%\\nHigh-Low Range: {high_low_range:.2f}%\\nCurrent Position: {current_position:.3f}\\nEntry Price: {entry_price}\\n\\nProvide your analysis and decision in the following format:\\n\\nAction: BUY/SELL/HOLD\\nPosition size: (0-1)\\nConfidence: (0-100)\\nReasoning: Your analysis here",
     "trading_params": {
         "min_confidence": 40,
         "take_profit": [
@@ -16,28 +12,21 @@
             }
         ]
     },
-    "time_exit": {
-        "max_holding_period": "48h"
-    },
     "stop_loss": {
         "initial": 5.0,
         "trailing": 2.5,
         "activation_threshold": 3.0
     },
     "price_change_threshold": {
-    "base": 0.005, 
-    "volatility_multiplier": 2.0,
-    "min_threshold": 0.001,  
-    "max_threshold": 0.1
+        "base": 0.005,
+        "volatility_multiplier": 2.0,
+        "min_threshold": 0.001,
+        "max_threshold": 0.1
     },
     "position_sizing": {
         "max_position_size": 1.0,
         "min_position_size": 0.1,
-        "risk_per_trade": 0.05,
-        "kelly_factor": 1.0,
-        "units": {
-            "position_size": "percent",
-            "risk": "percent"
-        }
-    }
+        "risk_per_trade": 0.05
+    },
+    "prompt_template": "Analyze the following market data and provide a trading decision:\n\nPrice: ${price}\nVolume: {volume}\n24h Change: {change_24h}%\nHigh-Low Range: {high_low_range}%\nCurrent Position: {current_position}\nEntry Price: {entry_price}\n\nTrading Parameters:\n- Position Size Range: {min_size} to {max_size}\n- Base Threshold: {base_threshold}%\n- Required Change: {required_change}%\n- Stop Loss: {stop_loss}%\n- Trailing Stop: {trailing_stop}%\n- Take Profit Targets: {take_profit_str}\n- Minimum Confidence: {min_confidence}%\n\nProvide your analysis and decision in the following format:\nAction: [BUY/SELL/HOLD]\nAmount: [position size]\nConfidence: [0-100]\nReasoning: [your analysis]\n"
 } 

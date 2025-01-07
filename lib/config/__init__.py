@@ -1,3 +1,3 @@
-from .config import AgentConfig
+from .config import Config
 
-__all__ = ['AgentConfig'] 
+__all__ = ['Config'] 

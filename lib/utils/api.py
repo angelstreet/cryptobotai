@@ -2,6 +2,7 @@ import os
 import requests
 from openai import OpenAI
 from anthropic import Anthropic
+import json
 
 def get_ai_credentials():
     """Get credentials for the selected AI provider"""
@@ -81,3 +82,26 @@ def get_ai_client(creds):
             default_headers=creds["headers"],
             timeout=30.0
         ) 
+
+def call_local_model(prompt: str, model: str = "mistral") -> str:
+    """Make API call to local Ollama instance"""
+    try:
+        url = "http://localhost:11434/api/generate"
+        
+        payload = {
+            "model": model,
+            "prompt": prompt,
+            "stream": False
+        }
+        
+        response = requests.post(url, json=payload)
+        
+        if response.status_code == 200:
+            return response.json()["response"]
+        else:
+            raise Exception(f"Error: {response.status_code} - {response.text}")
+            
+    except requests.exceptions.RequestException as e:
+        raise Exception(f"Connection error: {str(e)}")
+    except Exception as e:
+        raise Exception(str(e)) 

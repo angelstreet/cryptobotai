@@ -1,6 +1,6 @@
 from openai import OpenAI
 import re
-from lib.config.config import AgentConfig
+from lib.config.config import Config
 import numpy as np
 from datetime import datetime, timedelta
 from typing import Dict, Any
@@ -10,14 +10,17 @@ from lib.utils.display import (
     print_debug_info, print_market_config, 
     print_trading_data, print_api_error, 
     print_trading_params, print_candle_analysis,
-    print_trading_decision, format_debug_str
+    print_trading_decision, format_debug_str,
+    print_ai_prompt, print_size_adjustment
 )
 import os
+import time
+from lib.utils.api import call_local_model
 
 class TradingAgent:
     def __init__(self, ai_client: OpenAI, config_name: str = "default"):
         self.client = ai_client
-        self.config = AgentConfig(config_name)
+        self.config = Config(config_name)
         self.historical_data = []  # Store recent price data
         self.current_position = 0.0  # Track current position size
         self.entries = []  # List of dicts containing entry prices and amounts
@@ -68,6 +71,9 @@ class TradingAgent:
         """Log API response or error for debugging"""
         if error:
             print_api_error(error)
+        elif self.debug and response:
+            console.print("\n[dim]─── AI Response ───[/]")
+            console.print(response)
     
     def generate_trading_decision(self, market_data: Dict[str, float]) -> Dict[str, Any]:
         """Generate trading decision based on market data"""
@@ -102,10 +108,16 @@ class TradingAgent:
                 print_trading_data(market_data, self.current_position, required_change, volatility_adjustment)
             
             if abs(market_data["change_24h"]) < required_change:
-                decision = self._get_default_decision(
-                    f"Price change ({market_data['change_24h']:.3f}%) below dynamic threshold ({required_change:.3f}%)")
+                threshold_message = (
+                    f"Price change ({market_data['change_24h']:.3f}%) "
+                    f"below dynamic threshold ({required_change:.3f}%)"
+                )
                 if self.debug:
-                    print_trading_params(self.config.trading_params, decision, self.current_position, market_data)
+                    self._log_api_response(threshold_message)
+                
+                decision = self._get_default_decision(threshold_message)
+                if self.debug:
+                    print_trading_params(self.config.trading_params)
                 return decision
             
             # Format prompt with market data
@@ -131,20 +143,24 @@ class TradingAgent:
                 volatility_mult=self.config.price_change_threshold['volatility_multiplier']
             )
             
+            # Show prompt in debug mode
+            if self.debug:
+                print_ai_prompt(prompt)
+            
             provider = os.getenv("AI_PROVIDER", "OPENAI").upper()
             
             try:
                 if provider == "LOCAL":
-                    response = self.client.chat_completions_create(
-                        model=self.config.model,
-                        messages=[
-                            {"role": "system", "content": "You are a cryptocurrency trading assistant."},
-                            {"role": "user", "content": prompt}
-                        ],
-                        temperature=self.config.temperature,
-                        max_tokens=self.config.max_tokens
-                    )
-                    content = response["choices"][0]["message"]["content"]
+                    try:
+                        content = call_local_model(
+                            prompt=prompt,
+                            model=self.config.model
+                        )
+                        
+                    except Exception as local_error:
+                        print_api_error(local_error)
+                        return self._get_default_decision(str(local_error))
+                        
                 elif provider == "CLAUDE":
                     response = self.client.messages.create(
                         model=self.config.model,
@@ -155,7 +171,6 @@ class TradingAgent:
                         }],
                         max_tokens=self.config.max_tokens
                     )
-                    # Extract content from Claude's response
                     content = response.content[0].text
                 else:
                     response = self.client.chat.completions.create(
@@ -170,11 +185,15 @@ class TradingAgent:
                     )
                     content = response.choices[0].message.content
                 
+                
+                # Parse response and include raw content
                 decision = self._parse_response(content)
+                decision['raw_response'] = content
                 
             except Exception as api_error:
-                error_msg = f"API error: {str(api_error)}"
-                self._log_api_response(None, error_msg)
+                error_msg = f"API error ({provider}): {str(api_error)}"
+                if self.debug:
+                    print_api_error(error_msg)
                 return self._get_default_decision(error_msg)
                 
             if self.show_reasoning:
@@ -189,11 +208,22 @@ class TradingAgent:
                 )
             
             # Apply trading parameters
-            decision = self._apply_trading_params(decision, market_data)
+            decision = self._apply_trading_params(
+                decision, 
+                market_data,
+                required_change,
+                volatility_adjustment
+            )
             
-            # Print debug info after decision is made
-            if self.debug and debug_str:
-                print_debug_info(debug_str, decision, self.show_reasoning)
+            # Always print the trading decision
+            print_trading_decision(
+                decision=decision,
+                market_data=market_data,
+                position=self.current_position,
+                required_change=required_change,
+                volatility_adjustment=volatility_adjustment,
+                symbol=self.symbol
+            )
             
             return decision
             
@@ -209,7 +239,8 @@ class TradingAgent:
             "action": "HOLD",
             "amount": 0.0,
             "confidence": 0,
-            "reasoning": ""
+            "raw_response": reason,  # Store the original reason as raw response
+            "reasoning": ""  # Will be set below
         }
         
         try:
@@ -221,118 +252,79 @@ class TradingAgent:
                 if price_match and threshold_match:
                     price_change = float(price_match.group(1))
                     threshold = float(threshold_match.group(1))
-                else:
-                    raise ValueError("Could not parse price change values")
-                
-                if abs(price_change) < 0.001:
-                    decision["reasoning"] = (
-                        f"Market is showing minimal movement (±{abs(price_change):.3f}%). "
-                        f"Waiting for more significant price action above {threshold:.3f}% "
-                        f"before considering trades."
-                    )
-                else:
-                    direction = "decrease" if price_change < 0 else "increase"
-                    decision["reasoning"] = (
-                        f"Current price {direction} of {abs(price_change):.3f}% is below "
-                        f"the minimum threshold of {threshold:.3f}%. Holding position until "
-                        f"market volatility increases."
-                    )
-            
-            elif "API error" in reason:
-                decision["reasoning"] = (
-                    f"Trading paused due to API communication issue. {reason}. "
-                    f"Will retry on next update."
-                )
-            
-            elif "invalid response" in reason.lower():
-                decision["reasoning"] = (
-                    f"Received invalid trading signals. Defaulting to HOLD for safety. "
-                    f"Details: {reason}"
-                )
-            
+                    
+                    if abs(price_change) < 0.001:
+                        decision["reasoning"] = (
+                            f"Market is showing minimal movement (±{abs(price_change):.3f}%). "
+                            f"Waiting for more significant price action above {threshold:.3f}% "
+                            f"before considering trades."
+                        )
+                    else:
+                        direction = "decrease" if price_change < 0 else "increase"
+                        decision["reasoning"] = (
+                            f"Current price {direction} of {abs(price_change):.3f}% is below "
+                            f"the minimum threshold of {threshold:.3f}%. Holding position until "
+                            f"market volatility increases."
+                        )
             else:
-                # Generic error handling
-                decision["reasoning"] = (
-                    f"Holding position due to: {reason}"
-                )
+                decision["reasoning"] = f"Holding position due to: {reason}"
             
         except Exception as e:
-            # Fallback for parsing errors
             decision["reasoning"] = f"System safety: Holding position. Error details: {str(e)}"
         
         return decision
     
     def _parse_response(self, response: str) -> Dict[str, Any]:
-        """Parse the model's response into structured decision"""
+        """Parse AI response into structured decision"""
         try:
-            # Clean up response by removing common disclaimers and unnecessary text
-            disclaimer_patterns = [
-                r"(?i)This is not financial advice.*",
-                r"(?i)Always do your own research.*",
-                r"(?i)Remember that trading.*",
-                r"(?i)This analysis should not be.*",
-                r"(?i)Past performance.*",
-                r"(?i)Trading involves risk.*",
-                r"(?i)Please consult.*",
-                r"(?i)It's important to note.*",
-                r"(?i)Always remember that.*",
-                r"(?i)consider your risk tolerance.*",
-                r"(?i)before making any investment decisions.*",
-                r"(?i)not be taken as.*advice.*",
-                r"(?i)markets can be volatile.*",
-                r"(?i)do thorough research.*",
-                r"(?i)seek professional advice.*",
-                r"(?i)make sure to.*",
-                r"(?i)keep in mind that.*",
-                r"(?i)as with any trading.*"
-            ]
+            # Clean up response
+            cleaned_response = response.strip()
             
-            cleaned_response = response
-            for pattern in disclaimer_patterns:
-                cleaned_response = re.sub(pattern, "", cleaned_response, flags=re.DOTALL)
+            # Store raw response
+            raw_response = cleaned_response
             
-            # Remove multiple newlines and clean up whitespace
-            cleaned_response = re.sub(r'\n\s*\n', '\n\n', cleaned_response).strip()
-            
-            # Extract action (default to HOLD if not found)
-            action_match = re.search(r"Action:?\s*(BUY|SELL|HOLD)", cleaned_response, re.IGNORECASE)
+            # Extract action
+            action_match = re.search(r'action:\s*(\w+)', cleaned_response, re.IGNORECASE)
             action = action_match.group(1).upper() if action_match else "HOLD"
             
-            # Extract position size (default to 0)
-            size_match = re.search(r"Position size:?\s*(0\.\d+|[01])", cleaned_response)
-            amount = float(size_match.group(1)) if size_match else 0.0
+            # Extract confidence
+            confidence_match = re.search(r'confidence:\s*(\d+)', cleaned_response, re.IGNORECASE)
+            confidence = int(confidence_match.group(1)) if confidence_match else 0
             
-            # Extract confidence (default to 0)
-            conf_match = re.search(r"Confidence:?\s*(\d+)", cleaned_response)
-            confidence = int(conf_match.group(1)) if conf_match else 0
+            # Extract amount
+            amount_match = re.search(r'amount:\s*([\d.]+)', cleaned_response, re.IGNORECASE)
+            amount = float(amount_match.group(1)) if amount_match else 0.0
             
-            # Extract reasoning
+            # Extract reasoning - if no specific pattern matches, use the whole response
+            reasoning = "No reasoning provided"
             reason_patterns = [
-                r"Reasoning:?\s*(.+?)(?=\n\n|$)",
-                r"Analysis:?\s*(.+?)(?=\n\n|$)",
-                r"Detailed Analysis:?\s*(.+?)(?=\n\n|$)"
+                r'reasoning:\s*(.+?)(?=\n\n|\Z)',
+                r'reason:\s*(.+?)(?=\n\n|\Z)',
+                r'analysis:\s*(.+?)(?=\n\n|\Z)'
             ]
             
-            reasoning = "No reasoning provided"
             for pattern in reason_patterns:
                 reason_match = re.search(pattern, cleaned_response, re.IGNORECASE | re.DOTALL)
                 if reason_match:
                     reasoning = reason_match.group(1).strip()
                     break
+            else:
+                # If no specific reasoning pattern found, use the whole response
+                # Remove common patterns that aren't part of the analysis
+                cleaned_response = re.sub(r'action:.*?\n', '', cleaned_response, flags=re.IGNORECASE)
+                cleaned_response = re.sub(r'confidence:.*?\n', '', cleaned_response, flags=re.IGNORECASE)
+                cleaned_response = re.sub(r'amount:.*?\n', '', cleaned_response, flags=re.IGNORECASE)
+                reasoning = cleaned_response.strip()
             
-            # Clean up the reasoning text
-            if reasoning != "No reasoning provided":
-                # Remove any remaining disclaimers
-                for pattern in disclaimer_patterns:
-                    reasoning = re.sub(pattern, "", reasoning, flags=re.DOTALL)
-                # Clean up whitespace and empty lines
-                reasoning = re.sub(r'\s+', ' ', reasoning).strip()
+            # Clean up whitespace and empty lines
+            reasoning = re.sub(r'\s+', ' ', reasoning).strip()
             
             return {
                 "action": action,
                 "amount": amount,
                 "confidence": confidence,
-                "reasoning": reasoning
+                "reasoning": reasoning,
+                "raw_response": raw_response  # Add raw response
             }
             
         except Exception as e:
@@ -340,18 +332,23 @@ class TradingAgent:
             print(f"Raw response: {response}")
             return self._get_default_decision("Failed to parse response")
     
-    def _apply_trading_params(self, decision: Dict[str, Any], market_data: Dict[str, float]) -> Dict[str, Any]:
+    def _apply_trading_params(self, decision: Dict[str, Any], market_data: Dict[str, float], 
+                            required_change: float, volatility_adjustment: float) -> Dict[str, Any]:
         """Apply trading parameters from config"""
         params = self.config.trading_params
         position_config = self.config.position_sizing
         
-        # Add min_confidence to decision for display
+        # Store original values we want to preserve
+        raw_response = decision.get('raw_response')
+        original_reasoning = decision.get('reasoning')
+        
+        # Add min_confidence and debug flag to decision for display
         decision['min_confidence'] = params['min_confidence']
+        decision['debug'] = self.debug
         
         # Debug trading parameters
         if self.debug:
             print_trading_params(params)
-            print_trading_decision(decision, self.show_reasoning)
         
         # Force position size to 0 for HOLD
         if decision['action'] == 'HOLD':
@@ -361,13 +358,16 @@ class TradingAgent:
         if decision['confidence'] < params['min_confidence']:
             decision['action'] = 'HOLD'
             decision['amount'] = 0.0
+            decision['raw_response'] = raw_response or original_reasoning
             decision['reasoning'] = f"Confidence ({decision['confidence']}%) below minimum threshold ({params['min_confidence']}%)"
+            return decision
         
-        # Apply maximum position size
-        decision['amount'] = min(decision['amount'], position_config['max_position_size'])
-        
-        # Ensure minimum position size for active trades
+        # Position sizing - amount is treated as the desired position size in crypto units
         if decision['action'] != 'HOLD':
+            # Apply maximum position size
+            decision['amount'] = min(decision['amount'], position_config['max_position_size'])
+            
+            # Ensure minimum position size
             if decision['amount'] < position_config['min_position_size']:
                 decision['amount'] = position_config['min_position_size']
                 if self.debug:
@@ -377,9 +377,10 @@ class TradingAgent:
         if decision['action'] == 'SELL' and self.current_position <= 0:
             decision['action'] = 'HOLD'
             decision['amount'] = 0.0
+            decision['raw_response'] = raw_response or original_reasoning
             decision['reasoning'] = "Cannot SELL: No position to sell"
         
-        return decision 
+        return decision
     
     def _get_change_color(self, change: float) -> str:
         """Return the appropriate color for a price change"""

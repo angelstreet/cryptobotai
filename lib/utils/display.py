@@ -19,37 +19,30 @@ SHARED_THEME = Theme({
 # Create console instance
 console = Console(theme=SHARED_THEME)
 
-def print_debug_info(debug_str: str, decision: dict = None, show_reasoning: bool = False):
-    """Print debug information with optional decision details"""
-    if not show_reasoning:
-        console.print(debug_str)
-    else:
-        if debug_str:
-            console.print(debug_str)
-
-        if decision:
-            console.print(f"\n[bold]Decision:[/] {decision['action']} | "
-                         f"Size: {decision['amount']:.2f} | "
-                         f"Confidence: {decision['confidence']}%")
-            if decision.get('reasoning'):
-                console.print(f"[bold]Reasoning:[/] {decision['reasoning']}")
+def print_debug_info(debug_str: str, decision: dict = None):
+    """Print debug information"""
+    console.print(debug_str)
+    if decision:
+        console.print(f"\n[bold]Decision:[/] {decision['action']} | "
+                     f"Size: {decision['amount']:.2f} | "
+                     f"Confidence: {decision['confidence']}%")
+        if decision.get('reasoning'):
+            console.print(f"[bold]Reasoning:[/] {decision['reasoning']}")
 
 def print_header(symbol: str):
     """Print bot header"""
     console.print("=== Crypto AI Trading Bot ===", style="bold cyan")
     console.print(f"Trading {symbol}", style="bold")
 
-def print_trading_analysis(debug_str: str, decision: dict, show_reasoning: bool = False):
+def print_trading_analysis(debug_str: str, decision: dict):
     """Print trading analysis and decision"""
     console.print("\n[dim]─── Trading Analysis ───[/]")
-    if not show_reasoning:
-        console.print(debug_str)
-    else:
-        console.print(f"\n[bold]Decision:[/] {decision['action']} | "
-                     f"Size: {decision['amount']:.2f} | "
-                     f"Confidence: {decision['confidence']}%")
-        if decision.get('reasoning'):
-            console.print(f"[bold]Reasoning:[/] {decision['reasoning']}")
+    console.print(debug_str)
+    console.print(f"\n[bold]Decision:[/] {decision['action']} | "
+                 f"Size: {decision['amount']:.2f} | "
+                 f"Confidence: {decision['confidence']}%")
+    if decision.get('reasoning'):
+        console.print(f"[bold]Reasoning:[/] {decision['reasoning']}")
 
 def print_chart(data, symbol: str):
     """Print trading chart"""
@@ -187,11 +180,24 @@ def print_api_error(error: str):
     """Print API error response"""
     console.print(f"API Error Response: {error}", style="error")
 
-def print_trading_decision(decision: Dict, show_reasoning: bool = True):
-    """Print trading decision and reasoning"""
+def print_trading_decision(decision: Dict, market_data: Dict = None, position: float = None, 
+                         required_change: float = None, volatility_adjustment: float = None,
+                         symbol: str = None):
+    """Print trading decision with market data and reasoning"""
     console.print("\n[dim]─── Trading Decision ───[/]")
     
-    # Color-code the action
+    # 1. Print market data line if available
+    if market_data and symbol:
+        debug_str = format_debug_str(
+            market_data=market_data,
+            position=position,
+            symbol=symbol,
+            required_change=required_change,
+            volatility_adjustment=volatility_adjustment
+        )
+        console.print(debug_str)
+    
+    # 2. Print decision line
     action_style = {
         'HOLD': 'dim',
         'BUY': 'green',
@@ -204,9 +210,9 @@ def print_trading_decision(decision: Dict, show_reasoning: bool = True):
         f"AI Confidence: {decision['confidence']}% (Need: {decision.get('min_confidence', 40)}%)"
     )
     
-    if show_reasoning and decision.get('reasoning'):
-        console.print("\n[dim]─── AI Reasoning ───[/]")
-        console.print(decision['reasoning'])
+    # 3. Print agent reasoning
+    if decision['debug']:
+        console.print(f"Agent Reasoning: {decision['reasoning']}")
 
 def print_trading_params(params: Dict):
     """Print trading parameters in a compact table"""
@@ -320,3 +326,8 @@ def format_debug_str(market_data: Dict, position: float, symbol: str,
         debug_str += f" | {decision['action']} ({decision['confidence']}%)"
         
     return debug_str 
+
+def print_ai_prompt(prompt: str):
+    """Print AI prompt in debug mode"""
+    console.print("\n[dim]─── AI Prompt ───[/]")
+    console.print(prompt)

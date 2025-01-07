@@ -1,18 +1,16 @@
 {
-    "model": "default-model",
-    "temperature": 0.7,
-    "max_tokens": 200,
-    "prompt_template": "You are a cryptocurrency trading assistant. Analyze the following market data and provide a trading decision:\n\nMarket Analysis:\nCurrent Price: ${price}\nVolume: {volume}\n24h Change: {change_24h}%\n24h High-Low Range: {high_low_range}%\nCurrent Position: {current_position}\nEntry Price: {entry_price}\nMarket Context: Analyze the 24h price change and volatility to determine trend direction and strength.\nPosition sizing should be 0 for HOLD, or between 0.1-1.0 for active positions.\n\nProvide your decision as:\n- Action (BUY/SELL/HOLD)\n- Position size (0.0 for HOLD, 0.1-1.0 for active trades)\n- Confidence (0-100%)\n- Brief reasoning\n\nAnalysis:",
     "trading_params": {
         "min_confidence": 60,
         "take_profit": [
-            {"level": 2.0, "size": 0.5},
-            {"level": 3.0, "size": 0.3},
-            {"level": 4.0, "size": 0.2}
+            {
+                "target": 2.0,
+                "size": 0.5
+            },
+            {
+                "target": 5.0,
+                "size": 1.0
+            }
         ]
-    },
-    "time_exit": {
-        "max_holding_period": null
     },
     "stop_loss": {
         "initial": 2.0,
@@ -27,11 +25,8 @@
     },
     "position_sizing": {
         "max_position_size": 0.2,
-        "risk_per_trade": 0.02,
-        "kelly_factor": 0.5,
-        "units": {
-            "position_size": "percent",
-            "risk": "percent"
-        }
-    }
+        "min_position_size": 0.05,
+        "risk_per_trade": 0.02
+    },
+    "prompt_template": "Analyze the following market data and provide a trading decision:\n\nPrice: ${price}\nVolume: {volume}\n24h Change: {change_24h}%\nHigh-Low Range: {high_low_range}%\nCurrent Position: {current_position}\nEntry Price: {entry_price}\n\nTrading Parameters:\n- Position Size Range: {min_size} to {max_size}\n- Base Threshold: {base_threshold}%\n- Required Change: {required_change}%\n- Stop Loss: {stop_loss}%\n- Trailing Stop: {trailing_stop}%\n- Take Profit Targets: {take_profit_str}\n- Minimum Confidence: {min_confidence}%\n\nProvide your analysis and decision in the following format:\nAction: [BUY/SELL/HOLD]\nAmount: [position size]\nConfidence: [0-100]\nReasoning: [your analysis]\n"
 } 
