@@ -1,0 +1,9 @@
+{
+    "positions": {
+        "binance": {
+            "BTC/USDT": {
+                "amount": 0.0,
+                "mean_price": 0.0,
+                "transactions": [
+                    {
+                        "date": 

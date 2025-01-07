@@ -2,7 +2,7 @@ from rich.console import Console
 from rich.theme import Theme
 from rich.table import Table
 from datetime import datetime
-from typing import Dict
+from typing import Dict, Any
 import os
 
 # Define shared theme
@@ -80,19 +80,13 @@ def print_backtest_results(results: Dict):
 
 def print_api_config(config, client, debug: bool = False):
     """Print API configuration details when in debug mode"""
-    if not debug:
-        return
-        
     console.print("\n[dim]─── API Configuration ───[/]")
     table = Table(show_edge=False, box=None, padding=(0, 1))
     table.add_column("Provider", style="dim")
     table.add_column("Model", style="dim")
-    table.add_column("Temperature", style="dim")
-    table.add_column("Max Tokens", style="dim")
-    table.add_column("Base URL", style="dim")
     
     # Get provider with better default handling
-    provider = os.getenv('AI_PROVIDER', '').upper()
+    provider = os.getenv('AI_PROVIDER', 'LOCAL')
     if not provider:
         if 'localhost' in client.base_url:
             provider = 'LOCAL'
@@ -105,13 +99,23 @@ def print_api_config(config, client, debug: bool = False):
         else:
             provider = 'UNKNOWN'
     
-    row = [
-        provider,
-        config.model or 'N/A',
-        str(getattr(config, 'temperature', 'N/A')),
-        str(getattr(config, 'max_tokens', 'N/A')),
-        client.base_url or 'N/A'
-    ]
+    # Only add temperature and max_tokens columns for non-local providers
+    if provider != 'LOCAL':
+        table.add_column("Temperature", style="dim")
+        table.add_column("Max Tokens", style="dim")
+    
+    table.add_column("Base URL", style="dim")
+    
+    row = [provider, config.model or 'N/A']
+    
+    # Add temperature and max_tokens only for non-local providers
+    if provider != 'LOCAL':
+        row.extend([
+            str(getattr(config, 'temperature', 'N/A')),
+            str(getattr(config, 'max_tokens', 'N/A'))
+        ])
+    
+    row.append(client.base_url or 'N/A')
     
     table.add_row(*row)
     console.print(table)
@@ -119,7 +123,7 @@ def print_api_config(config, client, debug: bool = False):
 def print_market_config(exchange: str, symbol: str, timeframe: str, candles: int = None, 
                        start_date: datetime = None, end_date: datetime = None):
     """Print market configuration in a compact table"""
-    console.print("\n[dim]─── Market Configuration ───[/]")
+    console.print("\n[dim]─── Data Analysis ───[/]")
     table = Table(show_edge=False, box=None, padding=(0, 1))
     table.add_column("Exchange", style="dim")
     table.add_column("Symbol", style="dim")
@@ -211,8 +215,7 @@ def print_trading_decision(decision: Dict, market_data: Dict = None, position: f
     )
     
     # 3. Print agent reasoning
-    if decision['debug']:
-        console.print(f"Agent Reasoning: {decision['reasoning']}")
+    console.print(f"Agent Reasoning: {decision['reasoning']}")
 
 def print_trading_params(params: Dict):
     """Print trading parameters in a compact table"""
@@ -343,5 +346,144 @@ def print_trading_error(error: str):
 
 def print_ai_response(response: str):
     """Print AI response in debug mode"""
-    console.print("\n[dim]─── AI Response ───[/]")
+    console.print("[dim]─── AI Response ───[/]")
     console.print(response)
+
+def print_risk_analysis(trade: Dict[str, Any], market_data: Dict[str, Any]):
+    """Print risk analysis for a trade"""
+    console.print("\n[dim]─── Risk Analysis ───[/]")
+    
+    table = Table(show_edge=False, box=None, padding=(0, 1))
+    table.add_column("Action", style="dim")
+    table.add_column("Amount", style="dim")
+    table.add_column("Price", style="dim")
+    table.add_column("Total Value", style="dim")
+    table.add_column("Risk Level", style="dim")
+    
+    # Calculate total value of trade
+    total_value = trade['amount'] * market_data['price']
+    
+    # Determine risk level
+    if trade['action'] == 'BUY':
+        risk_style = "red"
+        risk_level = "Increasing"
+    elif trade['action'] == 'SELL':
+        risk_style = "green"
+        risk_level = "Decreasing"
+    else:
+        risk_style = "white"
+        risk_level = "Unchanged"
+    
+    table.add_row(
+        trade['action'],
+        f"{trade['amount']:.3f}",
+        f"${market_data['price']:,.2f}",
+        f"${total_value:,.2f}",
+        f"[{risk_style}]{risk_level}[/]"
+    )
+    
+    console.print(table)
+
+def print_loading_start(exchange: str):
+    """Print market data loading start message"""
+    console.print("\n[dim]─── Data Loading ───[/]")
+    console.print(f"Loading market data from {exchange.upper()}...", style="info")
+
+def print_loading_complete():
+    """Print market data loading complete message"""
+    console.print("Market data loading complete.", style="success")
+
+def print_api_params(config=None):
+    """Print API configuration parameters"""
+    console.print("\n[dim]─── API Configuration ───[/]")
+    table = Table(show_edge=False, box=None, padding=(0, 1))
+    table.add_column("Provider", style="dim")
+    table.add_column("Model", style="dim")
+    table.add_column("Temperature", style="dim")
+    table.add_column("Max Tokens", style="dim")
+    table.add_column("Base URL", style="dim")
+    
+    # Get provider with better default handling
+    provider = os.getenv('AI_PROVIDER', 'LOCAL')
+    if not provider:
+        provider = 'LOCAL'
+    
+    row = [
+        provider,
+        config.model if config else 'llama2',
+        str(config.temperature if config else '0.7'),
+        str(config.max_tokens if config else '200'),
+        os.getenv("API_URL", "http://localhost:11434")
+    ]
+    
+    table.add_row(*row)
+    console.print(table)
+
+def print_portfolio(portfolio: Dict):
+    """Print current portfolio summary"""
+    console.print("\n[dim]─── Portfolio Summary ───[/]")
+    
+    table = Table(show_edge=False, box=None, padding=(0, 1))
+    table.add_column("Exchange", style="dim")
+    table.add_column("Symbol", style="dim")
+    table.add_column("Amount", style="dim")
+    table.add_column("Mean Price", style="dim")
+    table.add_column("Current Value", justify="right", style="dim")
+    table.add_column("P/L", justify="right", style="dim")
+    
+    total_value = 0.0
+    
+    for exchange, positions in portfolio['positions'].items():
+        for symbol, pos in positions.items():
+            amount = pos['amount']
+            mean_price = pos['mean_price']
+            current_price = pos.get('current_price', mean_price)
+            
+            position_value = amount * current_price
+            total_value += position_value
+            
+            pl_pct = ((current_price - mean_price) / mean_price) * 100
+            pl_style = "green" if pl_pct >= 0 else "red"
+            
+            table.add_row(
+                exchange,
+                symbol,
+                f"{amount:.8f}",
+                f"${mean_price:,.2f}",
+                f"${position_value:,.2f}",
+                f"[{pl_style}]{pl_pct:+.2f}%[/]"
+            )
+    
+    console.print(table)
+    console.print(f"\nTotal Portfolio Value: ${total_value:,.2f}")
+
+def print_transactions(portfolio: Dict, exchange: str, symbol: str):
+    """Print transaction history for specific crypto"""
+    if exchange not in portfolio['positions'] or symbol not in portfolio['positions'][exchange]:
+        console.print(f"\nNo transactions found for {symbol} on {exchange}")
+        return
+        
+    position = portfolio['positions'][exchange][symbol]
+    
+    console.print(f"\n[dim]─── Transaction History: {exchange} {symbol} ───[/]")
+    
+    table = Table(show_edge=False, box=None, padding=(0, 1))
+    table.add_column("Date", style="dim")
+    table.add_column("Action", style="dim")
+    table.add_column("Amount", style="dim")
+    table.add_column("Price", style="dim")
+    table.add_column("Total", justify="right", style="dim")
+    
+    for tx in position['transactions']:
+        action_style = "green" if tx['action'] == 'BUY' else "red"
+        total = tx['amount'] * tx['price']
+        
+        table.add_row(
+            tx['date'],
+            f"[{action_style}]{tx['action']}[/]",
+            f"{tx['amount']:.8f}",
+            f"${tx['price']:,.2f}",
+            f"${total:,.2f}"
+        )
+    
+    console.print(table)

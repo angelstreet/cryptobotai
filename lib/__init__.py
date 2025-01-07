@@ -1,4 +1,3 @@
-from lib.agents.agent import TradingAgent
-from lib.backtester import Backtester
+from lib.agents import DataAnalystAgent, RiskManagerAgent, TraderAgent, Agent
 
-__all__ = ['TradingAgent', 'Backtester']
+__all__ = ['DataAnalystAgent', 'RiskManagerAgent', 'TraderAgent', 'Agent']
