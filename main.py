@@ -6,6 +6,7 @@ from lib.agents import TraderAgent, DataAnalystAgent, RiskManagerAgent
 from lib.utils.api import get_ai_client, get_ai_credentials
 from lib.utils.display import print_header, print_api_config
 from lib.config.config import Config
+from lib.utils.mock_data import get_mock_market_data, get_mock_trade_suggestion
 
 def main():
     # Load environment variables first
@@ -23,38 +24,39 @@ def main():
     parser.add_argument('--init-position', type=float, default=0.0, 
                        help='Initial position size (default: 0.0)')
     parser.add_argument('--debug', action='store_true', help='Enable debug mode')
+    parser.add_argument('--mock', action='store_true', help='Use mock data for testing')
     args = parser.parse_args()
 
     # Set AI provider in environment
     os.environ['AI_PROVIDER'] = args.ai_provider
 
-    # Initialize AI client and config
+    # Initialize config and client
+    config = Config(args.strategy)        
     creds = get_ai_credentials()
     client = get_ai_client(creds)
-    config = Config(args.strategy)        
     
-    # Initialize agents with config
+    # Initialize agents
     data_analyst = DataAnalystAgent(config)
     trader = TraderAgent(config)
     risk_manager = RiskManagerAgent(config)
-    
-    # Set portfolio file
     risk_manager.set_portfolio_file(args.portfolio)
     
-    # Get current position from portfolio
+    # Get current position
     position = risk_manager.get_position(args.exchange, args.symbol)
     current_position = position.amount if position else args.init_position
-    entry_price = position.entry_price if position else 0.0
+    entry_price = position.mean_price if position else 0.0
     
-    # Set debug mode for all agents
+    # Set mock and debug modes
     for agent in [data_analyst, trader, risk_manager]:
         agent.set_debug(args.debug)
+        agent.set_mock(args.mock)
     
     print_header(args.symbol)
     print_api_config(config, client, args.debug)
+    
     # 1. Fetch and analyze market data
     market_data = data_analyst.fetch_market_data(args.exchange, args.symbol)
-        
+    
     # 2. Generate trading decision with position info
     trade_suggestion = trader.generate_trading_decision(
         market_data, 

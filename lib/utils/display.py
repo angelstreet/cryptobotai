@@ -87,17 +87,6 @@ def print_api_config(config, client, debug: bool = False):
     
     # Get provider with better default handling
     provider = os.getenv('AI_PROVIDER', 'LOCAL')
-    if not provider:
-        if 'localhost' in client.base_url:
-            provider = 'LOCAL'
-        elif 'anthropic' in client.base_url:
-            provider = 'CLAUDE'
-        elif 'openai' in client.base_url:
-            provider = 'OPENAI'
-        elif 'openrouter' in client.base_url:
-            provider = 'OPENROUTER'
-        else:
-            provider = 'UNKNOWN'
     
     # Only add temperature and max_tokens columns for non-local providers
     if provider != 'LOCAL':
@@ -115,7 +104,9 @@ def print_api_config(config, client, debug: bool = False):
             str(getattr(config, 'max_tokens', 'N/A'))
         ])
     
-    row.append(client.base_url or 'N/A')
+    # Handle None client in mock mode
+    base_url = client.base_url if client else 'MOCK'
+    row.append(base_url)
     
     table.add_row(*row)
     console.print(table)
@@ -487,3 +478,14 @@ def print_transactions(portfolio: Dict, exchange: str, symbol: str):
         )
     
     console.print(table)
+
+def print_mock_loading():
+    """Print mock data loading message"""
+    console.print("\n[dim]─── Mock Data Loading ───[/]")
+    console.print("Loading mock market data...", style="info")
+    console.print("Mock data loaded successfully.", style="success")
+
+def print_mock_trading():
+    """Print mock trading message"""
+    console.print("\n[dim]─── Mock Trading ───[/]")
+    console.print("Generating mock trading decision...", style="info")

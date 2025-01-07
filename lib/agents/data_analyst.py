@@ -7,9 +7,11 @@ from lib.utils.display import (
     print_market_config, 
     print_loading_start, 
     print_loading_complete,
-    print_trading_error
+    print_trading_error,
+    print_mock_loading
 )
 from lib.agents.agent import Agent
+from lib.utils.mock_data import get_mock_market_data
 
 class DataAnalystAgent(Agent):
     def __init__(self, config):
@@ -40,6 +42,10 @@ class DataAnalystAgent(Agent):
 
     def fetch_market_data(self, exchange: str, symbol: str) -> Dict[str, float]:
         """Fetch and analyze market data"""
+        if self.mock:
+            print_mock_loading()
+            return get_mock_market_data(exchange, symbol)
+            
         try:
             # Print loading message
             print_loading_start(exchange)

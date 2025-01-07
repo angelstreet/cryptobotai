@@ -2,8 +2,23 @@
     "positions": {
         "binance": {
             "BTC/USDT": {
-                "amount": 0.0,
-                "mean_price": 0.0,
+                "amount": 0.2,
+                "mean_price": 65000.0,
                 "transactions": [
                     {
-                        "date": 
+                        "date": "2025-01-08T00:29:08.517820",
+                        "action": "BUY",
+                        "amount": 0.1,
+                        "price": 65000.0
+                    },
+                    {
+                        "date": "2025-01-08T00:29:08.523953",
+                        "action": "BUY",
+                        "amount": 0.1,
+                        "price": 65000.0
+                    }
+                ]
+            }
+        }
+    }
+}

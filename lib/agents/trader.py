@@ -2,11 +2,12 @@ from typing import Dict, Any
 from lib.utils.display import (
     print_trading_data, print_api_error, print_trading_params,
     print_trading_decision, print_ai_prompt, print_parse_error,
-    print_trading_error, print_ai_response
+    print_trading_error, print_ai_response, print_mock_trading
 )
 from lib.utils.api import call_local_model
 from lib.config.config import Config
 from lib.agents.agent import Agent
+from lib.utils.mock_data import get_mock_trade_suggestion
 
 class TraderAgent(Agent):
     def __init__(self, config):
@@ -27,29 +28,13 @@ class TraderAgent(Agent):
             'debug': self.debug
         }
 
-    def generate_trading_decision(self, market_data: Dict[str, float], current_position: float = 0.0, entry_price: float = 0.0) -> Dict[str, Any]:
-        """Generate trading decision based on market data and current position"""
-        try:
-            # Format and send prompt to AI
-            prompt = self._format_prompt(market_data, current_position, entry_price)
-            if self.debug:
-                print_ai_prompt(prompt)
-
-            # Get AI response
-            response = self._get_ai_response(prompt)
+    def generate_trading_decision(self, market_data: Dict, **kwargs) -> Dict:
+        """Generate trading decision"""
+        if self.mock:
+            print_mock_trading()
+            return get_mock_trade_suggestion()
             
-            # Parse response
-            decision = self._parse_response(response, current_position)
-            
-            # Print decision
-            if self.debug:
-                print_trading_decision(decision, market_data)
-            
-            return decision
-            
-        except Exception as e:
-            print_trading_error(str(e))
-            return self._get_default_decision(str(e))
+        # Regular trading logic...
 
     def _format_prompt(self, market_data: Dict[str, float], current_position: float, entry_price: float) -> str:
         """Format prompt for AI model"""

@@ -33,10 +33,8 @@ class RiskManagerAgent(Agent):
         """Save portfolio to file"""
         with open(self.portfolio_file, 'w') as f:
             # Convert portfolio to dict and handle datetime serialization
-            portfolio_dict = self.portfolio.dict(
-                json_encoders={
-                    datetime: lambda dt: dt.isoformat()
-                }
+            portfolio_dict = self.portfolio.model_dump(
+                mode='json'  # This handles datetime serialization automatically
             )
             json.dump(portfolio_dict, f, indent=4)
 
