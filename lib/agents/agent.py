@@ -1,14 +1,17 @@
 from openai import OpenAI
-from anthropic import Anthropic
 import re
 from lib.config.config import AgentConfig
 import numpy as np
 from datetime import datetime, timedelta
 from typing import Dict, Any
-import json
 import ccxt
 import pandas as pd
-from lib.utils.display import console, print_debug_info
+from lib.utils.display import (
+    print_debug_info, print_market_config, 
+    print_trading_data, print_api_error, 
+    print_trading_params, print_candle_analysis,
+    print_trading_decision, format_debug_str
+)
 import os
 
 class TradingAgent:
@@ -20,7 +23,7 @@ class TradingAgent:
         self.entries = []  # List of dicts containing entry prices and amounts
         self.debug = False  # Debug mode flag
         self.show_reasoning = False  # Show reasoning flag
-        self.console = self.config.console
+        self.symbol = None  # Add trading symbol
         
     def set_debug(self, debug: bool):
         """Enable or disable debug mode"""
@@ -64,29 +67,15 @@ class TradingAgent:
     def _log_api_response(self, response, error=None):
         """Log API response or error for debugging"""
         if error:
-            self.console.print(f"API Error Response: {error}", style="error")
+            print_api_error(error)
     
     def generate_trading_decision(self, market_data: Dict[str, float]) -> Dict[str, Any]:
         """Generate trading decision based on market data"""
         try:
-            if self.debug:
-                self.console.print("\n[dim]─── Analyzing Trading Data ───[/]")
-            
             # Update historical data
             self.historical_data.append(market_data["change_24h"])
             if len(self.historical_data) > 24:
                 self.historical_data.pop(0)
-            
-            # Initialize debug string
-            debug_str = None
-            if self.debug:
-                debug_str = (
-                    f"#{market_data.get('candle_number', 0):04d} | "
-                    f"Price: ${market_data['price']:,.2f} | "
-                    f"Change: {market_data['change_24h']:+.4f}% | "
-                    f"Vol: {market_data['volume']:.2f} | "
-                    f"Pos: {self.current_position:.3f}"
-                )
             
             # Check price change threshold
             threshold_config = self.config.price_change_threshold
@@ -98,17 +87,25 @@ class TradingAgent:
             required_change = max(threshold_config["min_threshold"], 
                                 min(required_change, threshold_config["max_threshold"]))
             
-            # Add threshold info to debug string
-            if self.debug and debug_str:
-                debug_str += f" | Req: {required_change:.4f}% (Vol: {volatility_adjustment:.2f}x)"
+            # Initialize debug string after required_change is calculated
+            if self.debug:
+                debug_str = format_debug_str(
+                    market_data=market_data,
+                    position=self.current_position,
+                    symbol=self.symbol,
+                    required_change=required_change,
+                    volatility_adjustment=volatility_adjustment
+                )
+            
+            # Print trading data before decision
+            if self.debug:
+                print_trading_data(market_data, self.current_position, required_change, volatility_adjustment)
             
             if abs(market_data["change_24h"]) < required_change:
                 decision = self._get_default_decision(
                     f"Price change ({market_data['change_24h']:.3f}%) below dynamic threshold ({required_change:.3f}%)")
-                if self.debug and debug_str:
-                    debug_str += f" | HOLD (Below threshold)"
-                    if not self.show_reasoning:
-                        self.console.print(debug_str)
+                if self.debug:
+                    print_trading_params(self.config.trading_params, decision, self.current_position, market_data)
                 return decision
             
             # Format prompt with market data
@@ -133,23 +130,6 @@ class TradingAgent:
                 min_confidence=self.config.trading_params['min_confidence'],
                 volatility_mult=self.config.price_change_threshold['volatility_multiplier']
             )
-            
-            # Debug log API call parameters
-            if self.debug:
-                self.console.print("\n[dim]─── API Configuration ───[/]")
-                self.console.print(f"Provider: {os.getenv('AI_PROVIDER', 'unknown').upper()}")
-                self.console.print(f"Model: {self.config.model}")
-                if os.getenv("AI_PROVIDER", "").lower() == "openrouter":
-                    self.console.print(f"App Name: {os.getenv('APP_NAME', 'default')}")
-                    self.console.print(f"App URL: {os.getenv('APP_URL', 'default')}")
-                else:
-                    self.console.print(f"Temperature: {self.config.temperature}")
-                    self.console.print(f"Max Tokens: {self.config.max_tokens}")
-                self.console.print(f"Base URL: {self.client.base_url}")
-            
-            # Get trading decision
-            if self.debug:
-                self.console.print("\n[dim]─── Generating Decision ───[/]")
             
             provider = os.getenv("AI_PROVIDER", "OPENAI").upper()
             
@@ -198,33 +178,15 @@ class TradingAgent:
                 return self._get_default_decision(error_msg)
                 
             if self.show_reasoning:
-                # Print separator before each candle analysis
-                self.console.print("─" * 120, style="dim")
-                
-                # Show debug line first if both debug and show_reasoning are enabled
-                if not self.debug:
-                    debug_str = (
-                        f"#{market_data.get('candle_number', 0):04d} | "
-                        f"Price: ${market_data['price']:,.2f} | "
-                        f"Change: {market_data['change_24h']:+.4f}% | "
-                        f"Vol: {market_data['volume']:.2f} | "
-                        f"Pos: {self.current_position:.3f} | "
-                        f"Req: {required_change:.4f}% (Vol: {volatility_adjustment:.2f}x) | "
-                        f"{decision['action']} ({decision['confidence']}%)"
-                    )
-                    self.console.print(debug_str)
-                
-                self.console.print(f"[bold cyan]Candle #{market_data.get('candle_number', 0)}:[/] "
-                                 f"[bold]Config:[/] Min Conf: {self.config.trading_params['min_confidence']}% | "
-                                 f"Base Thresh: {self.config.price_change_threshold['base']:.4f}% | "
-                                 f"Pos Range: {self.config.position_sizing['min_position_size']:.1f}-{self.config.position_sizing['max_position_size']:.1f} | "
-                                 f"SL: {self.config.stop_loss['initial']:.1f}% (Trail: {self.config.stop_loss['trailing']:.1f}%) | "
-                                 f"[bold]Market:[/] Change: {market_data['change_24h']:+.4f}% (Req: {required_change:.4f}%) | "
-                                 f"Vol: {market_data['volume']:.2f} | "
-                                 f"H-L Range: {market_data['high_low_range']:.2f}% | "
-                                 f"Position: {self.current_position:.3f} | "
-                                 f"[bold]Decision:[/] {decision['action']} | Size: {decision['amount']:.2f} | AI Conf: {decision['confidence']}% | "
-                                 f"[bold]Reason:[/] {decision['reasoning']}")
+                print_candle_analysis(
+                    market_data=market_data,
+                    config=self.config,
+                    decision=decision,
+                    position=self.current_position,
+                    required_change=required_change,
+                    volatility_adjustment=volatility_adjustment,
+                    symbol=self.symbol
+                )
             
             # Apply trading parameters
             decision = self._apply_trading_params(decision, market_data)
@@ -383,13 +345,13 @@ class TradingAgent:
         params = self.config.trading_params
         position_config = self.config.position_sizing
         
+        # Add min_confidence to decision for display
+        decision['min_confidence'] = params['min_confidence']
+        
         # Debug trading parameters
         if self.debug:
-            self.console.print(f"[dim]Trading Params Check:[/] "
-                             f"Min Conf: {params['min_confidence']}% (Got: {decision['confidence']}%) | "
-                             f"Action: {decision['action']} | "
-                             f"Size: {decision['amount']:.2f} | "
-                             f"Position: {self.current_position:.3f}")
+            print_trading_params(params)
+            print_trading_decision(decision, self.show_reasoning)
         
         # Force position size to 0 for HOLD
         if decision['action'] == 'HOLD':
@@ -409,7 +371,7 @@ class TradingAgent:
             if decision['amount'] < position_config['min_position_size']:
                 decision['amount'] = position_config['min_position_size']
                 if self.debug:
-                    self.console.print(f"[dim]Adjusted size to minimum: {decision['amount']:.2f}[/]")
+                    print_size_adjustment(decision['amount'])
         
         # Prevent SELL when no position
         if decision['action'] == 'SELL' and self.current_position <= 0:
@@ -434,16 +396,7 @@ class TradingAgent:
         end_date: datetime = None
     ) -> pd.DataFrame:
         try:
-            if self.debug:
-                self.console.print("\n[dim]─── Fetching Market Data ───[/]")
-                self.console.print(f"Exchange: {exchange.upper()}")
-                self.console.print(f"Symbol: {symbol}")
-                self.console.print(f"Timeframe: {timeframe}")
-                if start_date:
-                    self.console.print(f"Start date: {start_date}")
-                if end_date:
-                    self.console.print(f"End date: {end_date}")
-            
+            self.symbol = symbol  # Store the symbol
             exchange_instance = getattr(ccxt, exchange)()
             
             # Convert dates to timestamps if provided
@@ -481,7 +434,7 @@ class TradingAgent:
                 df = df[df['timestamp'] <= end_date]
                 
             if self.debug:
-                self.console.print(f"[dim]Retrieved {len(df)} candles from {exchange.upper()}[/]\n")
+                print_market_config(exchange, symbol, timeframe, len(df), start_date, end_date)
             
             return df
             

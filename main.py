@@ -7,11 +7,15 @@ import ccxt
 import pandas as pd
 from lib.agents.agent import TradingAgent
 from lib.backtester import Backtester
-from lib.utils.display import console, print_trading_analysis, print_header, print_chart
+from lib.utils.display import (
+    console, print_trading_analysis, print_header, 
+    print_chart, print_api_config, print_market_config
+)
 from lib.utils.api import get_ai_credentials, get_ai_client
 from datetime import datetime, timedelta
 import signal
 from lib.config.agent_config import AgentConfig
+import importlib
 
 def parse_args():
     parser = argparse.ArgumentParser(description='Crypto AI Trading Bot')
@@ -43,6 +47,10 @@ async def run_trading_bot(args):
         trading_agent = TradingAgent(ai_client=ai_client, config_name=args.agent_config)
         trading_agent.set_debug(args.debug)
         trading_agent.set_show_reasoning(args.show_reasoning)
+        
+        # Print configurations
+        if args.debug:
+            print_api_config(trading_agent.config, ai_client, True)
         
         if args.backtest:
             backtester = Backtester(initial_balance=Decimal(args.initial_balance))
