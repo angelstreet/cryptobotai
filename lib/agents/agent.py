@@ -11,7 +11,9 @@ from lib.utils.display import (
     print_trading_data, print_api_error, 
     print_trading_params, print_candle_analysis,
     print_trading_decision, format_debug_str,
-    print_ai_prompt, print_size_adjustment
+    print_ai_prompt, print_size_adjustment,
+    print_parse_error, print_trading_error,
+    print_ai_response
 )
 import os
 import time
@@ -72,8 +74,7 @@ class TradingAgent:
         if error:
             print_api_error(error)
         elif self.debug and response:
-            console.print("\n[dim]─── AI Response ───[/]")
-            console.print(response)
+            print_ai_response(response)
     
     def generate_trading_decision(self, market_data: Dict[str, float]) -> Dict[str, Any]:
         """Generate trading decision based on market data"""
@@ -228,7 +229,7 @@ class TradingAgent:
             return decision
             
         except Exception as e:
-            print(f"Error generating trading decision: {e}")
+            print_trading_error(str(e))
             return self._get_default_decision(str(e))
     
     def _get_default_decision(self, reason: str) -> Dict[str, Any]:
@@ -324,12 +325,11 @@ class TradingAgent:
                 "amount": amount,
                 "confidence": confidence,
                 "reasoning": reasoning,
-                "raw_response": raw_response  # Add raw response
+                "raw_response": raw_response
             }
             
         except Exception as e:
-            print(f"Error parsing response: {e}")
-            print(f"Raw response: {response}")
+            print_parse_error(str(e), response)
             return self._get_default_decision("Failed to parse response")
     
     def _apply_trading_params(self, decision: Dict[str, Any], market_data: Dict[str, float], 

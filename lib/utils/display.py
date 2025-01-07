@@ -331,3 +331,17 @@ def print_ai_prompt(prompt: str):
     """Print AI prompt in debug mode"""
     console.print("\n[dim]─── AI Prompt ───[/]")
     console.print(prompt)
+
+def print_parse_error(error: str, response: str):
+    """Print error information when parsing AI response"""
+    console.print(f"[error]Error parsing response: {error}[/]")
+    console.print(f"[dim]Raw response:[/]\n{response}")
+
+def print_trading_error(error: str):
+    """Print error when generating trading decision"""
+    console.print(f"[error]Error generating trading decision: {error}[/]")
+
+def print_ai_response(response: str):
+    """Print AI response in debug mode"""
+    console.print("\n[dim]─── AI Response ───[/]")
+    console.print(response)
