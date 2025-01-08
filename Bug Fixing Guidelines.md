@@ -6,4 +6,4 @@ Always prioritize the following principles:
 2. **Consistency**: Ensure the solution aligns with the existing codebase's style, patterns, and conventions.
 3. **Readability**: Keep the code clean and easy to understand.
 4. **Efficiency**: Ensure the solution is performant and does not introduce unnecessary overhead.
-5. All print to console must be in function inside display.py 
+5. **Snippets**: Do not display code snippet except if required by the user.

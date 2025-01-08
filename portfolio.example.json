@@ -1,30 +1,25 @@
 {
+    "exchange": "binance",
     "positions": {
-        "binance": {
-            "BTC/USDT": {
-                "amount": 0.1,
-                "mean_price": 42500.0,
-                "transactions": [
-                    {
-                        "date": "2024-03-20T14:30:00",
-                        "action": "BUY",
-                        "amount": 0.1,
-                        "price": 42500.0
-                    }
-                ]
-            },
-            "ETH/USDT": {
-                "amount": 1.5,
-                "mean_price": 2250.0,
-                "transactions": [
-                    {
-                        "date": "2024-03-19T09:15:00",
-                        "action": "BUY",
-                        "amount": 1.5,
-                        "price": 2250.0
-                    }
-                ]
-            }
+        "BTC/USDT": {
+            "amount": 0.1,
+            "mean_price": 42500.0,
+            "pending_buy": 0.0,
+            "pending_sell": 0.0,
+            "cost_eur": 4250.0,
+            "value_eur": 4250.0,
+            "trades": [
+                {
+                    "pair": "BTC-EUR",
+                    "open_date": "2024-03-20T14:30:00",
+                    "close_date": null,
+                    "amount": 0.1,
+                    "open_price": 42500.0,
+                    "close_price": null,
+                    "size_eur": 4250.0,
+                    "duration_hours": null
+                }
+            ]
         }
     }
 } 

@@ -411,73 +411,92 @@ def print_api_params(config=None):
     console.print(table)
 
 def print_portfolio(portfolio: Dict):
-    """Print current portfolio summary"""
-    console.print("\n[dim]─── Portfolio Summary ───[/]")
+    """Print positions overview split into FIAT/Stablecoins and Cryptocurrencies"""
+    console.print("\n[dim]─── Portfolio Overview ───[/]")
+    # Split positions into stables and crypto
+    stables = {}
+    crypto = {}
+    stable_coins = {'EUR/USDT', 'USDT/USD', 'USDC/USD', 'BUSD/USD'}
+    currency = portfolio.get('display_currency', '$')
     
-    table = Table(show_edge=False, box=None, padding=(0, 1))
-    table.add_column("Exchange", style="dim")
-    table.add_column("Symbol", style="dim")
-    table.add_column("Amount", style="dim")
-    table.add_column("Mean Price", style="dim")
-    table.add_column("Current Value", justify="right", style="dim")
-    table.add_column("P/L", justify="right", style="dim")
-    
-    total_value = 0.0
-    
-    for exchange, positions in portfolio['positions'].items():
-        for symbol, pos in positions.items():
-            amount = pos['amount']
-            mean_price = pos['mean_price']
-            current_price = pos.get('current_price', mean_price)
-            
-            position_value = amount * current_price
-            total_value += position_value
-            
-            pl_pct = ((current_price - mean_price) / mean_price) * 100
-            pl_style = "green" if pl_pct >= 0 else "red"
-            
-            table.add_row(
-                exchange,
-                symbol,
-                f"{amount:.8f}",
-                f"${mean_price:,.2f}",
-                f"${position_value:,.2f}",
-                f"[{pl_style}]{pl_pct:+.2f}%[/]"
-            )
-    
-    console.print(table)
-    console.print(f"\nTotal Portfolio Value: ${total_value:,.2f}")
+    for symbol, pos in portfolio['positions'].items():
+        if symbol in stable_coins:
+            stables[symbol] = pos
+        else:
+            crypto[symbol] = pos
 
-def print_transactions(portfolio: Dict, exchange: str, symbol: str):
-    """Print transaction history for specific crypto"""
-    if exchange not in portfolio['positions'] or symbol not in portfolio['positions'][exchange]:
-        console.print(f"\nNo transactions found for {symbol} on {exchange}")
-        return
-        
-    position = portfolio['positions'][exchange][symbol]
+    # Calculate totals first
+    stable_total = _calculate_total_value(stables, portfolio['estimated_prices'])
+    crypto_total = _calculate_total_value(crypto, portfolio['estimated_prices'])
+    total = stable_total + crypto_total
     
-    console.print(f"\n[dim]─── Transaction History: {exchange} {symbol} ───[/]")
+    # Print total at top
+    console.print(f"Total Balance : {currency}{total:.2f}")
+    console.print(f"Cash : {currency}{stable_total:.2f}")
+    console.print(f"Crypto : {currency}{crypto_total:.2f}")
+    # Print FIAT/Stablecoins table
+    if stables:
+        _print_positions_table("FIAT/Stablecoins", stables, portfolio['estimated_prices'], currency)
+
+    # Print Cryptocurrencies table
+    if crypto:
+        _print_positions_table("Cryptocurrencies", crypto, portfolio['estimated_prices'], currency)
+
+def _calculate_total_value(positions: Dict, estimated_prices: Dict) -> float:
+    """Calculate total value of positions"""
+    total_value = 0.0
+    for symbol, pos in positions.items():
+        current_price = estimated_prices.get(symbol, pos['mean_price'])
+        estimated_value = pos['amount'] * current_price
+        total_value += estimated_value
+    return total_value
+
+def _print_positions_table(title: str, positions: Dict, estimated_prices: Dict, currency: str) -> None:
+    """Print positions table"""
+    console.print(f"\n[dim]─── {title} ───[/]")
+    table = Table(show_edge=True, box=None)
+    table.add_column("Position", style="dim")
+    table.add_column("Amount", justify="right", style="dim")
+    table.add_column(f"Value ({currency})", justify="right", style="dim")
     
-    table = Table(show_edge=False, box=None, padding=(0, 1))
-    table.add_column("Date", style="dim")
-    table.add_column("Action", style="dim")
-    table.add_column("Amount", style="dim")
-    table.add_column("Price", style="dim")
-    table.add_column("Total", justify="right", style="dim")
-    
-    for tx in position['transactions']:
-        action_style = "green" if tx['action'] == 'BUY' else "red"
-        total = tx['amount'] * tx['price']
-        
+    for symbol, pos in positions.items():
+        current_price = estimated_prices.get(symbol, pos['mean_price'])
+        estimated_value = pos['amount'] * current_price
         table.add_row(
-            tx['date'],
-            f"[{action_style}]{tx['action']}[/]",
-            f"{tx['amount']:.8f}",
-            f"${tx['price']:,.2f}",
-            f"${total:,.2f}"
+            symbol.split('/')[0],
+            f"{pos['amount']:.6f}",
+            f"{currency}{estimated_value:.2f}"
         )
     
     console.print(table)
+
+def print_transactions(portfolio: Dict, symbol: str):
+    """Print trades overview for a specific symbol"""
+    if symbol not in portfolio['positions']:
+        console.print(f"\nNo trades found for {symbol}")
+        return
+        
+    position = portfolio['positions'][symbol]
+    
+    console.print("\n[dim]─── Trades Overview ───[/]")
+    
+    trades_table = Table(show_edge=True, box=None)
+    trades_table.add_column("Pair", style="dim")
+    trades_table.add_column("Open date", style="dim")
+    trades_table.add_column("Close date", style="dim")
+    trades_table.add_column("Duration (hours)", justify="right", style="dim")
+    trades_table.add_column("Size (EUR)", justify="right", style="dim")
+    
+    for trade in position['trades']:
+        trades_table.add_row(
+            trade['pair'],
+            trade['open_date'],
+            trade['close_date'] or "",
+            f"{trade['duration_hours']:.1f}" if trade['duration_hours'] else "",
+            f"{trade['size_eur']:.2f}"
+        )
+    
+    console.print(trades_table)
 
 def print_mock_loading():
     """Print mock data loading message"""
@@ -489,3 +508,57 @@ def print_mock_trading():
     """Print mock trading message"""
     console.print("\n[dim]─── Mock Trading ───[/]")
     console.print("Generating mock trading decision...", style="info")
+
+def print_orders_compact(portfolio: Dict):
+    """Print compact orders overview"""
+    console.print("\n[dim]─── Orders Overview ───[/]")
+    
+    table = Table(show_edge=True, box=None)
+    table.add_column("Market", style="dim")
+    table.add_column("Order", style="dim")
+    table.add_column("Status", style="dim")
+    table.add_column("Date", style="dim")
+    table.add_column("Amount", justify="right", style="dim")
+    table.add_column("Price", justify="right", style="dim")
+    
+    for symbol, pos in portfolio['positions'].items():
+        for order in pos['orders']:
+            # Style based on order type
+            order_style = "green" if "Buy" in order['order_type'] else "red"
+            status_style = "green" if order['status'] == 'Filled' else "yellow"
+            
+            table.add_row(
+                order['pair'],
+                f"[{order_style}]{order['order_type']}[/]",
+                f"[{status_style}]{order['status']}[/]",
+                order['last_filled'],
+                f"{order['amount']:.6f}",
+                f"€{order['execution_price']:.2f}"
+            )
+    
+    console.print(table)
+
+def print_order_details(order: Dict):
+    """Print detailed view of a specific order"""
+    console.print(f"\n[dim]─── Order Details: {order['order_id']} ───[/]")
+    
+    table = Table(show_edge=True, box=None)
+    table.add_column("Field", style="dim")
+    table.add_column("Value", style="dim")
+    
+    details = [
+        ("Market", order['pair']),
+        ("Order Type", order['order_type']),
+        ("Status", order['status']),
+        ("Last Filled", order['last_filled']),
+        ("Amount", f"{order['amount']:.6f}"),
+        ("Price", f"€{order['execution_price']:.2f}"),
+        ("Subtotal", f"€{order['subtotal']:.2f}"),
+        ("Fee", f"€{order['fee']:.2f}" if order['fee'] else "N/A"),
+        ("Total", f"€{order['total']:.2f}")
+    ]
+    
+    for field, value in details:
+        table.add_row(field, str(value))
+    
+    console.print(table)

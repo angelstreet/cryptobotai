@@ -1,85 +1,72 @@
-from datetime import datetime
 from typing import Dict, Any
-import ccxt
-import pandas as pd
-import numpy as np
-from lib.utils.display import (
-    print_market_config, 
-    print_loading_start, 
-    print_loading_complete,
-    print_trading_error,
-    print_mock_loading
-)
+from datetime import datetime
 from lib.agents.agent import Agent
 from lib.utils.mock_data import get_mock_market_data
+from rich.console import Console
+
+console = Console()
 
 class DataAnalystAgent(Agent):
     def __init__(self, config):
         super().__init__(config)
-        self.historical_data = []  # Store recent price data
-        self.symbol = None
         self.debug = False
+        self.mock = False
+        self.watched_symbols = set()
+        self.estimated_prices = {}
+        self.currency_rates = {
+            'EUR/USD': 1.08,
+            'USD/EUR': 0.926
+        }
+        self.last_refresh = None
 
-    def set_debug(self, debug: bool):
-        self.debug = debug
-
-    def _calculate_volatility(self, price_changes: list) -> float:
-        """Calculate volatility using standard deviation of recent price changes"""
-        if len(price_changes) < 2:
-            return 1.0
-        return float(np.std(price_changes) / np.mean(np.abs(price_changes)))
-
-    def _calculate_24h_change(self, df: pd.DataFrame) -> float:
-        """Calculate 24h price change percentage"""
-        if len(df) < 2:
-            return 0.0
-        return float((df['close'].iloc[-1] - df['close'].iloc[-24 if len(df) > 24 else 0]) / 
-                    df['close'].iloc[-24 if len(df) > 24 else 0] * 100)
-
-    def _calculate_high_low_range(self, candle: pd.Series) -> float:
-        """Calculate high-low range percentage"""
-        return float((candle['high'] - candle['low']) / candle['low'] * 100)
-
-    def fetch_market_data(self, exchange: str, symbol: str) -> Dict[str, float]:
-        """Fetch and analyze market data"""
+    def fetch_market_data(self, exchange: str, symbol: str) -> Dict[str, Any]:
+        """Fetch market data including currency rates"""
+        self.watched_symbols.add(symbol)
+        
         if self.mock:
-            print_mock_loading()
-            return get_mock_market_data(exchange, symbol)
+            market_data = get_mock_market_data(exchange, symbol)
+        else:
+            market_data = self._fetch_real_market_data(exchange, symbol)
+        
+        # Store price
+        self.estimated_prices[symbol] = market_data['price']
+        self.last_refresh = datetime.now()
+        
+        # Add our stored rates
+        market_data['currency_rates'] = self.currency_rates
+        return market_data
+
+    def refresh_market_data(self) -> None:
+        """Refresh all prices and rates"""
+        # Update currency rates
+        if not self.mock:
+            self.currency_rates = self._fetch_real_currency_rates()
+        
+        # Update prices for all watched symbols
+        for symbol in self.watched_symbols:
+            if self.mock:
+                price = get_mock_market_data('', symbol)['price']
+            else:
+                price = self._fetch_real_market_data('', symbol)['price']
+            self.estimated_prices[symbol] = price
             
-        try:
-            # Print loading message
-            print_loading_start(exchange)
-            
-            # Get market data
-            data = self._fetch_ohlcv(exchange, symbol)
-            
-            # Calculate metrics
-            last_price = data['close'].iloc[-1]
-            volume_24h = data['volume'].iloc[-1]
-            change_24h = ((last_price - data['open'].iloc[-1]) / data['open'].iloc[-1]) * 100
-            high_low_range = ((data['high'].iloc[-1] - data['low'].iloc[-1]) / data['low'].iloc[-1]) * 100
-            
-            market_data = {
-                'price': last_price,
-                'volume': volume_24h,
-                'change_24h': change_24h,
-                'high_low_range': high_low_range,
-                'exchange': exchange,  # Add exchange
-                'symbol': symbol      # Add symbol
-            }
-            
-            # Print loading complete
-            print_loading_complete()
-            
-            return market_data
-            
-        except Exception as e:
-            print_trading_error(str(e))
-            return {
-                'price': 0.0,
-                'volume': 0.0,
-                'change_24h': 0.0,
-                'high_low_range': 0.0,
-                'exchange': exchange,  # Add exchange
-                'symbol': symbol      # Add symbol
-            } 
+        self.last_refresh = datetime.now()
+        
+        if self.debug:
+            console.print("[green]Market data refreshed successfully[/]")
+
+    def get_estimated_price(self, symbol: str) -> float:
+        """Get latest price for symbol"""
+        return self.estimated_prices.get(symbol, 0.0)
+
+    def get_currency_rate(self, from_currency: str, to_currency: str) -> float:
+        """Get currency conversion rate"""
+        if from_currency == to_currency:
+            return 1.0
+        rate_key = f"{from_currency}/{to_currency}"
+        return self.currency_rates.get(rate_key, 1.0)
+
+    def _fetch_real_currency_rates(self) -> Dict[str, float]:
+        """Fetch real currency rates from API"""
+        # TODO: Implement real currency rate fetching
+        return self.currency_rates 

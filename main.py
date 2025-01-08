@@ -2,7 +2,7 @@ import argparse
 from datetime import datetime
 from dotenv import load_dotenv
 import os
-from lib.agents import TraderAgent, DataAnalystAgent, RiskManagerAgent
+from lib.agents import TraderAgent, DataAnalystAgent, PortfolioManagerAgent
 from lib.utils.api import get_ai_client, get_ai_credentials
 from lib.utils.display import print_header, print_api_config
 from lib.config.config import Config
@@ -25,6 +25,8 @@ def main():
                        help='Initial position size (default: 0.0)')
     parser.add_argument('--debug', action='store_true', help='Enable debug mode')
     parser.add_argument('--mock', action='store_true', help='Use mock data for testing')
+    parser.add_argument('--refresh', action='store_true', 
+                       help='Refresh market data only')
     args = parser.parse_args()
 
     # Set AI provider in environment
@@ -38,24 +40,33 @@ def main():
     # Initialize agents
     data_analyst = DataAnalystAgent(config)
     trader = TraderAgent(config)
-    risk_manager = RiskManagerAgent(config)
-    risk_manager.set_portfolio_file(args.portfolio)
+    portfolio_manager = PortfolioManagerAgent(config, data_analyst)
+    portfolio_manager.set_portfolio_file(args.portfolio)
+    portfolio_manager.set_exchange(args.exchange)
     
     # Get current position
-    position = risk_manager.get_position(args.exchange, args.symbol)
+    position = portfolio_manager.get_position(args.symbol)
     current_position = position.amount if position else args.init_position
     entry_price = position.mean_price if position else 0.0
     
     # Set mock and debug modes
-    for agent in [data_analyst, trader, risk_manager]:
+    for agent in [data_analyst, trader, portfolio_manager]:
         agent.set_debug(args.debug)
         agent.set_mock(args.mock)
     
     print_header(args.symbol)
     print_api_config(config, client, args.debug)
     
+    if args.refresh:
+        data_analyst.refresh_market_data()
+        portfolio_manager.print_portfolio()
+        return
+
     # 1. Fetch and analyze market data
     market_data = data_analyst.fetch_market_data(args.exchange, args.symbol)
+    
+    # Update portfolio with latest prices and rates
+    portfolio_manager.update_market_data(market_data)
     
     # 2. Generate trading decision with position info
     trade_suggestion = trader.generate_trading_decision(
@@ -65,12 +76,11 @@ def main():
     )
     
     # 3. Evaluate trade against risk parameters
-    final_decision = risk_manager.evaluate_trade(trade_suggestion, market_data)
+    final_decision = portfolio_manager.evaluate_trade(trade_suggestion, market_data)
     
     # 4. Execute or simulate trade if approved
     if final_decision['action'] != 'HOLD':
-        risk_manager.update_position(
-            exchange=market_data['exchange'],
+        portfolio_manager.update_position(
             symbol=market_data['symbol'],
             action=final_decision['action'],
             amount=final_decision['amount'],
@@ -78,7 +88,7 @@ def main():
         )
         
         # Show updated portfolio
-        risk_manager.print_portfolio()
+        portfolio_manager.print_portfolio()
 
 if __name__ == "__main__":
     main() 

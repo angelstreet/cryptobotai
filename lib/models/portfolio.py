@@ -1,27 +1,35 @@
-from pydantic import BaseModel, RootModel
+from pydantic import BaseModel
 from datetime import datetime
-from typing import Dict, List
+from typing import Dict, List, Optional, Literal
 
-class Transaction(BaseModel):
-    date: datetime
-    action: str
+class OrderDetails(BaseModel):
+    order_id: str
+    pair: str
+    order_type: Literal['Market Buy', 'Market Sell', 'Limit Buy', 'Limit Sell']
+    status: Literal['Filled', 'Cancelled']
+    last_filled: datetime
     amount: float
-    price: float
+    execution_price: float
+    subtotal: float
+    fee: Optional[float] = None
+    total: float
 
 class Position(BaseModel):
     amount: float
     mean_price: float
-    transactions: List[Transaction] = []
-
-class ExchangePositions(RootModel):
-    root: Dict[str, Position]
-
-    def __init__(self, **data):
-        super().__init__(root=data.get('root', {}))
+    pending_buy: float = 0.0
+    pending_sell: float = 0.0
+    cost_eur: float
+    value_eur: float
+    orders: List[OrderDetails] = []
 
 class Portfolio(BaseModel):
-    positions: Dict[str, Dict[str, Position]] = {}  # key: exchange -> {symbol -> Position}
-
+    exchange: str
+    positions: Dict[str, Position] = {}
+    estimated_prices: Dict[str, float] = {}
+    display_currency: str = '$'  # Default to USD
+    currency_rates: Dict[str, float] = {}  # Exchange rates for currency conversion
+    
     class Config:
         json_encoders = {
             datetime: lambda v: v.isoformat()
