@@ -11,18 +11,33 @@ console = Console()
 class PortfolioManagerAgent(Agent):
     def __init__(self, config, data_analyst=None):
         super().__init__(config)
-        self.debug = False
-        self.portfolio_file = 'portfolio.json'
-        self.portfolio = self._load_portfolio()
-        self.data_analyst = data_analyst
+        self._portfolio_file = 'portfolio.json'
+        self._portfolio = self._load_portfolio()
+        self._data_analyst = data_analyst
+
+    @property
+    def portfolio_file(self) -> str:
+        return self._portfolio_file
+
+    @property
+    def portfolio(self) -> Portfolio:
+        return self._portfolio
+
+    @property
+    def data_analyst(self):
+        return self._data_analyst
+
+    @data_analyst.setter
+    def data_analyst(self, value):
+        self._data_analyst = value
 
     def set_debug(self, debug: bool):
         self.debug = debug
 
     def set_portfolio_file(self, filepath: str):
         """Set portfolio file path"""
-        self.portfolio_file = filepath
-        self.portfolio = self._load_portfolio()
+        self._portfolio_file = filepath
+        self._portfolio = self._load_portfolio()
 
     def _load_portfolio(self) -> Portfolio:
         """Load portfolio from file"""

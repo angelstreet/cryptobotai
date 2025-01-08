@@ -90,18 +90,17 @@ def call_local_model(prompt: str, model: str = "mistral") -> str:
         
         payload = {
             "model": model,
-            "prompt": prompt,
-            "stream": False
+            "prompt": prompt
         }
         
         response = requests.post(url, json=payload)
+        response.raise_for_status()
         
-        if response.status_code == 200:
-            return response.json()["response"]
+        result = response.json()
+        if "response" in result:
+            return result["response"]
         else:
-            raise Exception(f"Error: {response.status_code} - {response.text}")
+            raise ValueError(f"Unexpected response format: {result}")
             
-    except requests.exceptions.RequestException as e:
-        raise Exception(f"Connection error: {str(e)}")
     except Exception as e:
         raise Exception(str(e)) 

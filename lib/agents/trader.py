@@ -12,7 +12,15 @@ from lib.utils.mock_data import get_mock_trade_suggestion
 class TraderAgent(Agent):
     def __init__(self, config):
         super().__init__(config)
-        self.debug = False
+        self._historical_data = []
+
+    @property
+    def historical_data(self):
+        return self._historical_data
+
+    @historical_data.setter
+    def historical_data(self, value):
+        self._historical_data = value
 
     def set_debug(self, debug: bool):
         """Enable or disable debug mode"""

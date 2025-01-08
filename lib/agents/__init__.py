@@ -1,6 +1,13 @@
-from .data_analyst import DataAnalystAgent
-from .portfolio_manager import PortfolioManagerAgent
-from .trader import TraderAgent
 from .agent import Agent
+from .data_analyst import DataAnalystAgent
+from .trader import TraderAgent
+from .portfolio_manager import PortfolioManagerAgent
+from .backtester import BacktesterAgent
 
-__all__ = ['DataAnalystAgent', 'PortfolioManagerAgent', 'TraderAgent', 'Agent'] 
+__all__ = [
+    'Agent',
+    'DataAnalystAgent',
+    'TraderAgent',
+    'PortfolioManagerAgent',
+    'BacktesterAgent'
+] 

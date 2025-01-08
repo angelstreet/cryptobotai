@@ -11,6 +11,19 @@ class Config:
         load_dotenv()
         self.strategy = strategy
         self.console = console
+        self.debug_mode = False
+        self.current_timestamp = None
+        self.timeframe = '1h'
+        self.risk_parameters = {
+            'max_position_size': 0.1,
+            'stop_loss': 0.02,
+            'take_profit': 0.05
+        }
+        self.execution_parameters = {
+            'slippage': 0.001,
+            'timeout': 30,
+            'retry_attempts': 3
+        }
         
         # Load strategy config
         self.config = self._load_strategy_config()

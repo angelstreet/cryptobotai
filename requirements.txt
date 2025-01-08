@@ -1,19 +1,20 @@
-# AI Providers
+# Core dependencies
+python-dotenv>=1.0.0
+pydantic>=2.0.0
+rich>=13.0.0
+
+# AI Framework
+crewai>=0.11.2
+langchain>=0.1.0
 openai>=1.0.0
-anthropic>=0.8.0
-openrouter-py>=0.3.0
 
 # Data Analysis
 pandas>=2.0.0
 numpy>=1.24.0
-pydantic>=2.0.0
 
 # Trading
 ccxt>=4.0.0
 
-# Visualization
-plotly>=5.0.0
-rich>=13.0.0
-
 # Utils
-python-dotenv>=1.0.0
+aiohttp>=3.9.0
+requests>=2.31.0
