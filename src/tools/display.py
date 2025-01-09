@@ -562,3 +562,11 @@ def print_order_details(order: Dict):
         table.add_row(field, str(value))
     
     console.print(table)
+
+def print_backtest_progress(message: str):
+    """Print backtest progress message"""
+    print(f"[Backtest] {message}")
+
+def print_backtest_error(message: str):
+    """Print backtest error message"""
+    print(f"[Backtest Error] {message}")

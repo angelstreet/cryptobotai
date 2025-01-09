@@ -1,6 +1,6 @@
 from typing import Dict, Any
 from .base import Task
-from lib.agents import TraderAgent
+from agents import TraderAgent
 
 class TradingDecision(Task):
     def __init__(self, trader: TraderAgent):

@@ -1,5 +1,10 @@
 {
     "python.pythonPath": "C:\\Python\\Python312",
     "python.defaultInterpreterPath": "C:\\Python\\Python312",
-    "python.languageServer": "Default"
+    "python.languageServer": "Default",
+    "python.analysis.diagnosticSeverityOverrides": {
+    },
+    "python.analysis.extraPaths": [
+        "C:\\Python\\Python312"
+    ]
 }

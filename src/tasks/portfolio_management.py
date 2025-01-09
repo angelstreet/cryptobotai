@@ -1,6 +1,6 @@
 from typing import Dict, Any
 from .base import Task
-from lib.agents import PortfolioManagerAgent
+from agents import PortfolioManagerAgent
 
 class PortfolioManagement(Task):
     def __init__(self, portfolio_manager: PortfolioManagerAgent):

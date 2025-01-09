@@ -1,7 +1,5 @@
 from typing import Dict, Any, Set
-from lib.utils.display import print_loading_start, print_loading_complete
-from lib.agents.agent import Agent
-from lib.utils.mock_data import get_mock_market_data
+from .agent import Agent
 
 class DataAnalystAgent(Agent):
     def __init__(self, config):

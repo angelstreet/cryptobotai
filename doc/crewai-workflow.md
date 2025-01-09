@@ -1,100 +1,123 @@
-# Crypto Trading Bot with AI Agents
+# **AI Crypto Agency - Agents and Workflow**
 
-This project implements a crypto trading bot using AI agents with the `crewai` framework. The bot is designed to automate trading decisions by analyzing market data, developing strategies, backtesting them, and executing trades on an exchange.
-
----
-
-## **Overview**
-
-The bot consists of four specialized AI agents, each responsible for a specific part of the trading workflow:
-
-1. **Data Analyst**: Fetches and analyzes market data (historical and live).
-2. **Portfolio Manager**: Develops trading strategies, manages the portfolio, and evaluates risk exposure.
-3. **Backtester**: Validates strategies using historical data.
-4. **Trader**: Executes live trades on the exchange.
-
-The workflow follows a logical sequence: **Data → Analysis → Strategy → Backtesting → Execution → Evaluation**.
+This document outlines the **agents** and **workflow** for the AI Crypto Agency project. The system is designed to automate crypto trading using specialized AI agents, with a clear separation between **frontend** and **backend** components.
 
 ---
 
-## **Agent Roles and Responsibilities**
+## **Agents List**
 
-### **1. Data Analyst**
-- **Role**: Fetch and analyze market data.
-- **Tasks**:
-  - Fetch historical and live market data.
-  - Perform technical, fundamental, and sentiment analysis.
-  - Periodically refresh live data for real-time insights.
-- **Tools**:
-  - `fetch_historical_data`
-  - `fetch_live_data`
-  - `technical_analysis`
-  - `sentiment_analysis`
+### **Frontend Agents**
 
-### **2. Portfolio Manager**
-- **Role**: Develop strategies, manage the portfolio, and evaluate risk exposure.
-- **Tasks**:
-  - Develop and optimize trading strategies.
-  - Manage portfolio allocation (Buy/Hold/Sell decisions).
-  - Evaluate risk exposure and adjust strategies accordingly.
-  - Regularly evaluate portfolio performance (post-trade analysis).
-- **Tools**:
-  - `strategy_development`
-  - `portfolio_management`
-  - `risk_analysis`
-  - `performance_evaluation`
-
-### **3. Backtester**
-- **Role**: Test strategies on historical data.
-- **Tasks**:
-  - Backtest strategies using historical data.
-  - Provide performance metrics and insights to the Portfolio Manager.
-- **Tools**:
-  - `backtest_strategy`
-  - `historical_data_analysis`
-
-### **4. Trader**
-- **Role**: Execute live trades on the exchange.
-- **Tasks**:
-  - Execute trading orders (Buy/Sell) as directed by the Portfolio Manager.
-  - Monitor order execution and minimize slippage.
-- **Tools**:
-  - `execute_trade`
-  - `order_monitoring`
+#### **Receptionist Agent**
+- **Role**: Interacts with the user.
+- **Responsibilities**:
+  - Displays a menu of options (e.g., live trade, portfolio update, backtest).
+  - Forwards user requests to the **Orchestrator Agent**.
+- **Key Features**:
+  - User-friendly interface for task selection.
+  - Handles user input and error messages.
 
 ---
 
-## **Workflow**
+### **Backend Agents**
 
-1. **Data Analysis**:
-   - The **Data Analyst** fetches historical and live market data and performs analysis (technical, fundamental, sentiment).
+#### **Orchestrator Agent**
+- **Role**: Manages task routing and coordination.
+- **Responsibilities**:
+  - Adds tasks to a **task queue** for asynchronous processing.
+  - Ensures tasks are executed in the correct order.
+- **Key Features**:
+  - Task prioritization and scheduling.
+  - Handles communication between agents.
 
-2. **Strategy Development**:
-   - The **Portfolio Manager** uses insights from the Data Analyst to develop and optimize trading strategies.
+#### **LiveTraderAgent**
+- **Role**: Executes live trades on the exchange.
+- **Responsibilities**:
+  - Runs continuously in the background using `asyncio`.
+  - Fetches market data and makes trading decisions periodically.
+- **Key Features**:
+  - Non-blocking execution for real-time trading.
+  - Handles trade execution and order monitoring.
 
-3. **Backtesting**:
-   - The **Backtester** validates strategies using historical data and provides performance metrics to the Portfolio Manager.
+#### **TestTraderAgent**
+- **Role**: Simulates trades in a sandbox environment.
+- **Responsibilities**:
+  - Tests trading strategies without real money.
+  - Provides feedback on strategy performance.
+- **Key Features**:
+  - Safe environment for testing and experimentation.
+  - Simulates real-world trading conditions.
 
-4. **Trade Execution**:
-   - The **Trader** executes live trades on the exchange as directed by the Portfolio Manager.
+#### **BacktestTraderAgent**
+- **Role**: Validates trading strategies using historical data.
+- **Responsibilities**:
+  - Runs backtests in a separate thread to avoid blocking the main thread.
+  - Evaluates strategy performance and provides metrics.
+- **Key Features**:
+  - Handles CPU-intensive backtesting efficiently.
+  - Generates detailed performance reports.
 
-5. **Performance Evaluation**:
-   - The **Portfolio Manager** evaluates post-trade performance and adjusts strategies as needed.
+#### **PortfolioManagerAgent**
+- **Role**: Manages the portfolio and evaluates performance.
+- **Responsibilities**:
+  - Provides portfolio updates on demand.
+  - Evaluates risk exposure and adjusts strategies.
+- **Key Features**:
+  - Real-time portfolio tracking.
+  - Risk analysis and performance evaluation.
+
+#### **DataAnalystAgent**
+- **Role**: Fetches and analyzes market data.
+- **Responsibilities**:
+  - Provides historical and live market data to other agents.
+  - Performs technical and sentiment analysis.
+- **Key Features**:
+  - Supports data-driven decision-making.
+  - Handles data fetching and preprocessing.
 
 ---
 
-## **Task Repartition**
+## **Workflow Summary**
 
-| Task                                | Responsible Agent       |
-|-------------------------------------|-------------------------|
-| Fetch historical and live data      | Data Analyst            |
-| Perform technical analysis          | Data Analyst            |
-| Perform sentiment analysis          | Data Analyst            |
-| Develop trading strategies          | Portfolio Manager       |
-| Backtest strategies                 | Backtester              |
-| Manage portfolio allocation         | Portfolio Manager       |
-| Evaluate risk exposure              | Portfolio Manager       |
-| Execute live trades                 | Trader                  |
-| Monitor trade execution             | Trader                  |
-| Evaluate post-trade performance     | Portfolio Manager       |
-| Regularly review portfolio          | Portfolio Manager       |
+### **1. User Interaction**
+- The **Receptionist Agent (frontend)** interacts with the user and displays available tasks (e.g., live trade, portfolio update, backtest).
+- The user selects a task, and the Receptionist forwards the request to the **Orchestrator Agent (backend)**.
+
+### **2. Task Routing**
+- The **Orchestrator Agent (backend)** adds the task to a **task queue** for asynchronous processing.
+- Tasks are processed by the appropriate agent (e.g., LiveTraderAgent, BacktestTraderAgent, PortfolioManagerAgent).
+
+### **3. Continuous Tasks**
+- The **LiveTraderAgent (backend)** runs continuously in the background using `asyncio`.
+- It periodically fetches market data, makes trading decisions, and executes trades.
+
+### **4. On-Demand Tasks**
+- Tasks like portfolio updates or backtests are added to the **task queue** by the Orchestrator.
+- Workers process these tasks asynchronously without blocking the main thread.
+
+### **5. CPU-Intensive Tasks**
+- Tasks like backtesting are executed in a separate thread using **threading** or **multiprocessing** to avoid blocking the main thread.
+
+### **6. Event-Driven Updates**
+- An **Event Manager** triggers tasks based on events (e.g., market data updates, user requests).
+- For example, a market data update event triggers the LiveTraderAgent.
+
+---
+
+## **Key Systems**
+
+### **1. Async**
+- Used for non-blocking execution of continuous and on-demand tasks.
+- Ensures that the system remains responsive during live trading.
+
+### **2. Queue**
+- Manages on-demand tasks efficiently.
+- Tasks are added to the queue by the Orchestrator and processed asynchronously.
+
+### **3. Threading**
+- Handles CPU-intensive tasks like backtesting in a separate thread.
+- Prevents blocking of the main thread during resource-heavy operations.
+
+---
+
+This README provides a clear overview of the **agents**, **workflow**, and **key systems** in your AI Crypto Agency project. You can use this as a reference for developers and stakeholders. 🚀
