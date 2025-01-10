@@ -14,9 +14,7 @@ class WelcomeTool(BaseTool):
         
         Returns:
             Dict[str, Any]: Welcome message details
-        """
-        message = "=== AI Crypto Agency ===\n"
-        
+        """        
         commands = {
             'show_portfolio': 'Portfolio overview',
             'trade': 'Execute live trade',
