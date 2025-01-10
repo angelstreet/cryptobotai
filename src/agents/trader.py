@@ -1,8 +1,8 @@
 from abc import abstractmethod
-from typing import Dict, Any, List
-from src.agents.agent import Agent
-from src.tools.display import print_trading_error, print_trading_data
+from typing import Dict, Any, Optional, List
+from crewai import Agent, Task
 from pydantic import Field, ConfigDict
+from src.utils.display import print_trading_error, print_trading_data
 
 class TraderAgent(Agent):
     """Base trader agent with shared functionality"""

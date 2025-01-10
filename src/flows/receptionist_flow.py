@@ -1,8 +1,7 @@
 # flows/receptionist_flow.py
 from typing import List, Dict, Any
-from crewai import Flow, Task, Agent
-from src.agents.receptionist import ReceptionistAgent
-from src.tasks.portfolio_manager_tasks import show_portfolio_task
+from crewai import Flow, Agent
+from src.agents.receptionist import ReceptionistAgent, WelcomeHandler, UserInputHandler, RouteCommandHandler, HelpHandler
 
 class ReceptionistFlow(Flow):
     """Flow for handling welcome and user guidance"""
@@ -11,43 +10,37 @@ class ReceptionistFlow(Flow):
         self.config = config
         self.receptionist = receptionist
         self.portfolio_manager = portfolio_manager
+        self.welcome_handler = WelcomeHandler()
+        self.input_handler = UserInputHandler()
+        self.route_command_handler = RouteCommandHandler(self.config)
+        self.help_handler = HelpHandler()
         super().__init__()
 
     def get_agents(self) -> List[Agent]:
         """Define the agents used in this flow"""
         return [self.receptionist, self.portfolio_manager]
 
-    def get_tasks(self) -> List[Task]:
-        """Define the tasks for this flow"""
-        return [
-            Task(
-                description="Show welcome message",
-                expected_output="A welcome message displayed to the user",
-                agent=self.receptionist,
-                async_execution=False,
-            ),
-            Task(
-                description="Get user command input",
-                expected_output="A valid command provided by the user",
-                agent=self.receptionist,
-                async_execution=False,
-            )
-        ]
+    def route_command(self, command: str) -> None:
+        """Route the command to the appropriate task or flow"""
+        if command == 'show_portfolio':
+            self.portfolio_manager.show_portfolio()
+        elif command == 'help':
+            self.help_handler.run()
 
     def kickoff(self) -> Dict[str, Any]:
-        """Run the receptionist flow."""
-        tasks = self.get_tasks()
-
-        # Task 1: Show welcome message
-        self.receptionist.execute_task(tasks[0])
+        """Run the receptionist flow with direct handler execution."""
+ 
+        if self.config.command != 'welcome':
+            command_result = self.route_command_handler.run()
+            command = command_result.get('command')
+            self.route_command(command)
+        else:
+            self.welcome_handler.run()
+            self.help_handler.run()
 
         while True:  
-            # Task 2: Handle command input
-            command_result = self.receptionist.execute_task(tasks[1])
+            command_result = self.input_handler.run()
             command = command_result.get('command')
-
-            # Route the command to task or flow
-            if command == 'show_portfolio':
-                self.portfolio_manager.show_portfolio()
-            elif command == 'exit':
+            self.route_command(command)
+            if command == 'exit':
                 break
