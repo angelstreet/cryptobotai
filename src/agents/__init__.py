@@ -4,7 +4,7 @@ from .data_analyst import DataAnalystAgent
 from .trader import TraderAgent
 from .portfolio_manager import PortfolioManagerAgent
 from .live_trader import LiveTraderAgent
-from .test_trader import TestTraderAgent
+from .virtual_trader import VirtualTraderAgent
 from .backtest_trader import BacktestTraderAgent
 from .receptionist import ReceptionistAgent
 
@@ -14,7 +14,7 @@ __all__: List[str] = [
     'TraderAgent',
     'PortfolioManagerAgent',
     'LiveTraderAgent',
-    'TestTraderAgent',
+    'VirtualTraderAgent',
     'BacktestTraderAgent',
     'ReceptionistAgent'
 ] 
