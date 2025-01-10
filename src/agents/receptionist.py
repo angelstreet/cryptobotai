@@ -29,7 +29,7 @@ class WelcomeTool(BaseTool):
         )
         
         for cmd, desc in commands.items():
-            message += f"• {cmd:<10} - {desc}\n"
+            message += f"• {cmd:<14} - {desc}\n"
             
         print(message)
         return {
