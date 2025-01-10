@@ -1,29 +1,20 @@
 # flows/welcome_flow.py
 from crewai import Flow, Task
-from agents.receptionist import ReceptionistAgent  # Remove src.
+from agents.receptionist import ReceptionistAgent
 
 class ReceptionistFlow(Flow):
-    """Flow for handling welcome and user guidance"""
+    """Flow for handling welcome and user guidance (No llm required)"""
     
     def __init__(self, config):
-        self.config = config
-        self.receptionist = ReceptionistAgent(config=self.config)
+        self.receptionist = ReceptionistAgent(config=config)
         super().__init__()
 
-    def start(self):
-        """Define the starting task(s) for the flow"""
+    def kickoff(self) -> str:
+        """Run the welcome flow synchronously"""
         welcome_task = Task(
             description="Show welcome message and available commands",
-            agent=self.receptionist
+            expected_output="A welcome message with list of available commands",
+            agent=self.receptionist,
+            async_execution=False,
         )
-        return [welcome_task]
-        
-    async def run(self):
-        """Run the welcome flow"""
-        # Execute the welcome task
-        tasks = self.start()
-        results = []
-        for task in tasks:
-            result = await self.execute_task(task)
-            results.append(result)
-        return "\n".join(results)
+        return self.receptionist.execute_task(welcome_task)

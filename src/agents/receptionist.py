@@ -9,7 +9,7 @@ class WelcomeTool(BaseTool):
     
     def _run(self) -> str:
         """Return welcome message and available commands"""
-        print("=== AI Crypto Agency ===")
+        message = "=== AI Crypto Agency ===\n\n"
         
         commands = {
             'portfolio': 'Show portfolio overview',
@@ -19,15 +19,16 @@ class WelcomeTool(BaseTool):
             'help': 'Show this help message'
         }
         
-        message = (
+        message += (
             "Hi, crypto lover! How can I help you?\n\n"
             "Available commands:\n"
         )
         
         for cmd, desc in commands.items():
             message += f"• {cmd:<10} - {desc}\n"
-        
-        return message
+            
+        print(message)  # Print directly from the tool
+        return message  # Still return for potential logging/chaining
 
 class ReceptionistAgent(Agent):
     """Frontend agent handling user interactions"""
