@@ -51,11 +51,12 @@ class CryptoAgency:
     
     
     def kickoff(self) -> None:
-        """Orchestrate the crypto agency"""      
-        # Receptionist flow
+        """Create the crypto agency"""      
+        # Receptionist flow handle user input then route to tasks and flow
         flow = ReceptionistFlow(
             config=self.config,
-            receptionist=self.receptionist
+            receptionist=self.receptionist,
+            portfolio_manager =self.portfolio_manager
         )
         flow.kickoff()
         

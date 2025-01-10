@@ -2,18 +2,20 @@
 from typing import List, Dict, Any
 from crewai import Flow, Task, Agent
 from src.agents.receptionist import ReceptionistAgent
+from src.tasks.portfolio_manager_tasks import show_portfolio_task
 
 class ReceptionistFlow(Flow):
-    """Flow for handling welcome and user guidance (No llm required)"""
+    """Flow for handling welcome and user guidance"""
     
-    def __init__(self, config, receptionist: ReceptionistAgent):
+    def __init__(self, config, receptionist: ReceptionistAgent, portfolio_manager: Agent):
         self.config = config
         self.receptionist = receptionist
+        self.portfolio_manager = portfolio_manager
         super().__init__()
 
     def get_agents(self) -> List[Agent]:
         """Define the agents used in this flow"""
-        return [self.receptionist]
+        return [self.receptionist, self.portfolio_manager]
 
     def get_tasks(self) -> List[Task]:
         """Define the tasks for this flow"""
@@ -34,22 +36,18 @@ class ReceptionistFlow(Flow):
 
     def kickoff(self) -> Dict[str, Any]:
         """Run the receptionist flow."""
-        tasks = self.get_tasks()  # Define tasks outside the loop
+        tasks = self.get_tasks()
 
         # Task 1: Show welcome message
-        welcome_result = self.receptionist.execute_task(tasks[0])
+        self.receptionist.execute_task(tasks[0])
 
-        while True:  # Loop indefinitely
+        while True:  
             # Task 2: Handle command input
             command_result = self.receptionist.execute_task(tasks[1])
             command = command_result.get('command')
 
-            # Route the command to the appropriate agent or flow
-            if command == 'portfolio':
-                print("portfolio")
-                # portfolio_result = self.portfolio_manager.execute_show_portfolio({'type':})
+            # Route the command to task or flow
+            if command == 'show_portfolio':
+                self.portfolio_manager.show_portfolio()
             elif command == 'exit':
                 break
-
-            # After the next flow is done, return to the receptionist
-            print("Back to the receptionist...\n")
