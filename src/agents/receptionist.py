@@ -23,8 +23,8 @@ class WelcomeTool(BaseTool):
             'exit': 'Exit the program'
         }
         
-        message += (
-            "Hi, crypto lover! How can I help you?\n\n"
+        message = (
+            "\nHi, crypto lover! How can I help you?\n\n"
             "Available commands:\n"
         )
         
