@@ -55,50 +55,22 @@ class CryptoAgency:
         """Portfolio Manager Agent"""
         return PortfolioManagerAgent(self.config)
 
-    def trader(self):
+    def live_trader(self):
         """Trader Agent"""
-        if self.config.trading_mode == 'live':
-            return LiveTraderAgent(self.config)
-        elif self.config.trading_mode == 'backtest':
-            return BacktestTraderAgent(self.config)
-        else:
-            return TestTraderAgent(self.config)
+        return LiveTraderAgent(self.config)
+    
+    def backtest_trader(self):
+        """Trader Agent"""
+        return BacktestTraderAgent(self.config)
+    
+    def virtual_trader(self):
+        """Trader Agent"""
+        return VirtualTraderAgent(self.config)
 
     def receptionist(self):
         """Receptionist Agent"""
         return ReceptionistAgent(self.config)
 
-    def analyze_market_task(self):
-        """Task for analyzing market data"""
-        return Task(
-            description="Analyze market data",
-            agent=self.data_analyst(),
-            expected_output="Market analysis report"
-        )
-
-    def manage_portfolio_task(self):
-        """Task for managing portfolio"""
-        return Task(
-            description="Manage portfolio",
-            agent=self.portfolio_manager(),
-            expected_output="Portfolio overview"
-        )
-
-    def execute_trade_task(self):
-        """Task for executing trades"""
-        return Task(
-            description="Execute trade",
-            agent=self.trader(),
-            expected_output="Trade execution report"
-        )
-
-    def welcome_task(self):
-        """Task for welcoming users"""
-        return Task(
-            description="Welcome user and show available commands",
-            agent=self.receptionist(),
-            expected_output="Welcome message : Hellow crypto lover! How can I help you?"
-        )
 
     @classmethod
     def kickoff(cls, config):
@@ -106,12 +78,13 @@ class CryptoAgency:
         agency = cls(config)
         
         # Create crew
+        receptionnist=agency.receptionist()
         crew = Crew(
-            agents=[
-                agency.receptionist()
+            agents=[receptionnist
+                
             ],
             tasks=[
-                agency.welcome_task()
+                receptionnist.welcome_task()
             ],
         )
         

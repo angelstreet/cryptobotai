@@ -1,5 +1,5 @@
 from typing import Dict, Any, Optional
-from crewai import Agent
+from crewai import Agent, Task
 from pydantic import Field, ConfigDict
 
 class ReceptionistAgent(Agent):
@@ -17,16 +17,26 @@ class ReceptionistAgent(Agent):
             role="Client Interface Specialist",
             goal="Provide a seamless user experience by managing client interactions",
             backstory="A skilled front-end specialist with expertise in user interface design",
-            llm=config.llm,  # Now config.llm is guaranteed to exist
+            llm=config.llm, 
             verbose=config.debug
         )
         self.parent_crew = parent_crew
 
-    def execute_welcome(self, context: Dict) -> Dict[str, Any]:
-        """Execute welcome task"""
-        print("=== AI Crypto Agency ===")
-        print("Welcome crypto lover!\n How can I help you?")
+    def welcome_task(self) :
+        """Execute welcome task with a formatted message and available commands."""
+        return Task(
+            description="Print welcome message",
+            agent=self.receptionist(),
+            expected_output="Welcome message"
+        )
+        # Format the welcome message
+        welcome_message = [
+            "\n=== AI Crypto Agency ===",
+            "Welcome crypto lover! How can I help you?\n",
+            "=== Available Commands ===",
+        ]
         
+        # Define available commands with descriptions
         commands = {
             'portfolio': 'Show portfolio overview',
             'trade': 'Execute live trade',
@@ -35,8 +45,17 @@ class ReceptionistAgent(Agent):
             'help': 'Show this help message'
         }
         
-        print("=== Available Commands ===")
-        for cmd, desc in commands.items():
-            print(f"{cmd:10} - {desc}")
-            
-        return {'commands': commands}
+        # Format commands
+        command_lines = [
+            f"{cmd:<10} - {desc}" 
+            for cmd, desc in commands.items()
+        ]
+        
+        # Combine all parts and create final output
+        output = '\n'.join(welcome_message + command_lines)
+        
+        # Return both the formatted string and commands dict
+        return {
+            'message': output,
+            'commands': commands
+        }
