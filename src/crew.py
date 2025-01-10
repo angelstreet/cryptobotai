@@ -4,6 +4,7 @@ from typing import Optional, Dict, Any
 from dotenv import load_dotenv
 from crewai import Crew, Task
 from langchain.chat_models import ChatOpenAI
+from src.agents.receptionist import ReceptionistAgent
 
 class CryptoAgency:
     """AI Crypto Trading Agency using crewai"""
@@ -11,7 +12,6 @@ class CryptoAgency:
     def __init__(self, llm_config: Optional[Dict[str, Any]] = None, welcome_config: Optional[Dict[str, Any]] = None):
         self.env = self._init_environment()
         self.llm = self._init_llm(llm_config)
-        self.welcome_config = welcome_config
     
     def _init_environment(self) -> Dict[str, str]:
         """Initialize environment variables"""
@@ -37,7 +37,6 @@ class CryptoAgency:
         """Create receptionist agent with custom welcome configuration"""
         return ReceptionistAgent(
             llm=self.llm,
-            welcome_config=self.welcome_config,
             verbose=self.env['DEBUG']
         )
     
