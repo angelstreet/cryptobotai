@@ -22,11 +22,11 @@ class ReceptionistAgent(Agent):
         )
         self.parent_crew = parent_crew
 
-def welcome_task(self) :
+def welcome_task(receptionnist) :
     """Execute welcome task with a formatted message and available commands."""
     return Task(
         description="Print welcome message",
-        agent=self.receptionist(),
+        agent=receptionnist,
         expected_output="Welcome message"
     )
     # Format the welcome message

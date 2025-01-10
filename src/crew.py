@@ -77,13 +77,13 @@ class CryptoAgency:
     def kickoff(cls, config):
         """Create and run the crew"""
         agency = cls(config)
-        
+        receptionnist=agency.receptionist()
         # Create crew
         crew = Crew(
-            agents=[agency.receptionist()
+            agents=[receptionnist
             ],
             tasks=[
-                welcome_task
+                welcome_task(receptionnist)
             ],
         )
         
