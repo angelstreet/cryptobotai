@@ -1,21 +1,15 @@
 # receptionist.py
-from typing import Dict, Any, Optional
-from crewai import Agent
+from typing import Dict, Any, Optional, List
+from crewai import Agent, Task
 from crewai.tools import BaseTool
-from pydantic import Field, BaseModel
-from src.tools.display import print_header
-
-class WelcomeOutput(BaseModel):
-    message: str
-    commands: Dict[str, str]
 
 class WelcomeTool(BaseTool):
     name: str = "welcome"
     description: str = "Display welcome message and available commands"
     
-    def _execute(self) -> WelcomeOutput:
-        """Execute the welcome tool functionality"""
-        print_header("AI Crypto Agency")
+    def _run(self) -> str:
+        """Return welcome message and available commands"""
+        print("=== AI Crypto Agency ===")
         
         commands = {
             'portfolio': 'Show portfolio overview',
@@ -33,10 +27,7 @@ class WelcomeTool(BaseTool):
         for cmd, desc in commands.items():
             message += f"• {cmd:<10} - {desc}\n"
         
-        return WelcomeOutput(
-            message=message,
-            commands=commands
-        )
+        return message
 
 class ReceptionistAgent(Agent):
     """Frontend agent handling user interactions"""
@@ -52,10 +43,9 @@ class ReceptionistAgent(Agent):
             verbose=config.debug
         )
 
-    def execute(self, task: str) -> Dict[str, Any]:
-        """Execute the given task"""
-        if "welcome" in task.lower():
+    def execute_task(self, task: Task, context: Optional[str] = None, tools: Optional[List[BaseTool]] = None) -> str:
+        """Execute task without LLM for welcome message"""
+        if "welcome" in task.description.lower():
             tool = WelcomeTool()
-            result = tool._execute()
-            return result.dict()
-        return {"error": "Unknown task"}
+            return tool._run()
+        return "Unknown task"

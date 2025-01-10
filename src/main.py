@@ -19,12 +19,12 @@ class Config:
 def parse_arguments():
     """Parse command line arguments"""
     parser = argparse.ArgumentParser(
-        description='AI Crypto Trading Agency',
+        description='Help menu for you crypto addict ><',
         formatter_class=argparse.ArgumentDefaultsHelpFormatter
     )
     
     # Only keep debug flag
-    parser.add_argument('--debug', action='store_true',
+    parser.add_argument('-d','--debug', action='store_true',
                        help='Enable debug mode')
     
     return parser.parse_args()

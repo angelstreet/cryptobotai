@@ -2,9 +2,9 @@
 import os
 from typing import Optional, Dict, Any
 from dotenv import load_dotenv
-from crewai import Crew, Task
-from langchain.chat_models import ChatOpenAI
+from crewai import Crew, Task, LLM
 from src.agents.receptionist import ReceptionistAgent
+from src.tasks import welcome_task
 
 class CryptoAgency:
     """AI Crypto Trading Agency using crewai"""
@@ -14,22 +14,30 @@ class CryptoAgency:
         self.env = self._init_environment()
         self.config.llm = self._init_llm()
     
-    def _init_environment(self) -> Dict[str, str]:
-        """Initialize environment variables"""
+    def _init_environment(self):
         load_dotenv()
-        return {
-            'OPENAI_API_KEY': os.getenv('OPENAI_API_KEY'),
-            'AI_MODEL': os.getenv('AI_MODEL', 'gpt-3.5-turbo'),
-            'DEBUG': os.getenv('DEBUG', 'False').lower() == 'true'
+        env_vars = {
+            'AI_API_PROVIDER': os.getenv('AI_API_PROVIDER', 'ollama'),
+            'AI_API_URL': os.getenv('AI_API_URL', 'http://localhost:11434'),
+            'AI_API_MODEL': os.getenv('AI_API_MODEL', 'mistral'),
+            'AI_API_KEY': os.getenv('AI_API_KEY', '')
         }
-    
-    def _init_llm(self) -> ChatOpenAI:
-        """Initialize LLM"""
-        return ChatOpenAI(
-            model=self.env['AI_MODEL'],
-            temperature=0.7,
-            api_key=self.env['OPENAI_API_KEY']
-        )
+        return env_vars
+
+    def _init_llm(self) -> LLM:
+        """Initialize LLM based on config."""
+        provider = self.env['AI_API_PROVIDER'].lower()
+        # Initialize LLM with common parameters
+        llm_params = {
+            "model": self.env['AI_API_MODEL'],
+            "base_url": self.env['AI_API_URL']
+        }
+
+        # Add API key if required
+        if provider in ("openai", "anthropic"):
+            llm_params["api_key"] = self.env['AI_API_KEY']
+
+        return LLM(**llm_params)
     
     @classmethod
     def kickoff(cls, config):
@@ -37,14 +45,9 @@ class CryptoAgency:
         agency = cls(config)
         receptionist = ReceptionistAgent(config=agency.config)
         
-        welcome_task = Task(
-            description="Welcome the user and show available commands",
-            agent=receptionist
-        )
-        
         crew = Crew(
             agents=[receptionist],
-            tasks=[welcome_task]
+            tasks=[welcome_task(receptionist)]
         )
         
         return crew.kickoff()
