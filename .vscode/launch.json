@@ -1,10 +1,16 @@
 {
-    "configurations": [    
+    "version": "0.2.0",
+    "configurations": [
         {
-            "name": "Python Debugger: Python File",
-            "type": "debugpy",
+            "name": "Python: Current File",
+            "type": "python",
             "request": "launch",
-            "program": "${src/main.py}"
+            "program": "${workspaceFolder}/src/main.py",
+            "console": "integratedTerminal",
+            "justMyCode": true,
+            "env": {
+                "PYTHONPATH": "${workspaceFolder}"
+            }
         }
     ]
 }

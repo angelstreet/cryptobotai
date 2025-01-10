@@ -4,8 +4,7 @@ from typing import Optional, Dict, Any, List
 from dotenv import load_dotenv
 from crewai import Crew, Task, LLM
 from src.agents.receptionist import ReceptionistAgent
-from src.agents.portfolio_manager   import PortfolioManagerAgent
-from src.tasks.portfolio_manager_tasks import show_portfolio_task
+from src.agents.portfolio_manager import PortfolioManagerAgent
 from flows.receptionist_flow import ReceptionistFlow
 
 class CryptoAgency:
@@ -15,6 +14,17 @@ class CryptoAgency:
         self.config = config
         self.env = self._init_environment()
         self.config.llm = self._init_llm()
+        
+        # Initialize agents
+        self.receptionist = ReceptionistAgent(config=self.config)
+        self.portfolio_manager = PortfolioManagerAgent(config=self.config)
+        
+        # Initialize crew with all agents
+        self.crew = Crew(
+            agents=[self.receptionist, self.portfolio_manager],
+            tasks=[],  # Tasks will be managed by flows
+            verbose=self.config.debug
+        )
 
     def _init_environment(self):
         load_dotenv()
@@ -41,7 +51,11 @@ class CryptoAgency:
     
     
     def kickoff(self) -> None:
-        """Initialize and run the trading system"""            
-        # Initialize and run Receptionist flow
-        flow = ReceptionistFlow(self.config)
-        flow.kickoff()  # No need to print result
+        """Orchestrate the crypto agency"""      
+        # Receptionist flow
+        flow = ReceptionistFlow(
+            config=self.config,
+            receptionist=self.receptionist
+        )
+        flow.kickoff()
+        
