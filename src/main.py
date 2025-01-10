@@ -1,7 +1,6 @@
+# main.py
 import sys
 from pathlib import Path
-from dataclasses import dataclass
-from crewai import LLM
 
 # Add project root to Python path
 project_root = str(Path(__file__).parent.parent)
@@ -11,35 +10,27 @@ import os
 import argparse
 from src.crew import CryptoAgency
 
-@dataclass
-class Config:
-    debug: bool = False
-    llm: LLM = None  # Will be set by CryptoAgency
-
 def parse_arguments():
     """Parse command line arguments"""
     parser = argparse.ArgumentParser(
-        description='Help menu for you crypto addict ><',
+        description='AI Crypto Trading System',
         formatter_class=argparse.ArgumentDefaultsHelpFormatter
     )
     
-    # Only keep debug flag
     parser.add_argument('-d','--debug', action='store_true',
                        help='Enable debug mode')
-    
+    parser.add_argument('--virtual', action='store_true',
+                       help='Use virtual portfolio for practice (default: live)')
+    parser.add_argument('command', nargs='?', default='welcome',
+                       choices=['welcome', 'show_portfolio', 'help', 'exit'],
+                       help='Command to execute')
+
     return parser.parse_args()
 
 def main():
-    """Main"""
-    # Parse arguments
-    args = parse_arguments()
-    
-    # Create minimal config object
-    config = Config(debug=args.debug)
-    
-    # Initialize and run Trading Crew
-    result = CryptoAgency.kickoff(config)
-    print(result)
+    """Main entry point"""
+    crew = CryptoAgency(config=parse_arguments())
+    crew.kickoff()
 
 if __name__ == "__main__":
-    main() 
+    main()
