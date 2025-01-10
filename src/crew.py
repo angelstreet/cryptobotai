@@ -2,6 +2,7 @@ import os
 from dotenv import load_dotenv
 from crewai import Task, Crew, LLM
 from src.tools import api as api_tool, display as display_tool
+from src.agents.receptionist import welcome_task
 from src.agents import (
     DataAnalystAgent, PortfolioManagerAgent, 
     LiveTraderAgent, TestTraderAgent, BacktestTraderAgent, ReceptionistAgent
@@ -78,13 +79,11 @@ class CryptoAgency:
         agency = cls(config)
         
         # Create crew
-        receptionnist=agency.receptionist()
         crew = Crew(
-            agents=[receptionnist
-                
+            agents=[agency.receptionist()
             ],
             tasks=[
-                receptionnist.welcome_task()
+                welcome_task
             ],
         )
         
