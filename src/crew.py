@@ -9,9 +9,10 @@ from src.agents.receptionist import ReceptionistAgent
 class CryptoAgency:
     """AI Crypto Trading Agency using crewai"""
     
-    def __init__(self, llm_config: Optional[Dict[str, Any]] = None, welcome_config: Optional[Dict[str, Any]] = None):
+    def __init__(self, config):
+        self.config = config
         self.env = self._init_environment()
-        self.llm = self._init_llm(llm_config)
+        self.config.llm = self._init_llm()
     
     def _init_environment(self) -> Dict[str, str]:
         """Initialize environment variables"""
@@ -22,37 +23,27 @@ class CryptoAgency:
             'DEBUG': os.getenv('DEBUG', 'False').lower() == 'true'
         }
     
-    def _init_llm(self, config: Optional[Dict[str, Any]] = None) -> ChatOpenAI:
-        """Initialize LLM with provided config or defaults"""
-        default_config = {
-            'model': self.env['AI_MODEL'],
-            'temperature': 0.7,
-            'api_key': self.env['OPENAI_API_KEY']
-        }
-        
-        final_config = {**default_config, **(config or {})}
-        return ChatOpenAI(**final_config)
-    
-    def receptionist(self) -> ReceptionistAgent:
-        """Create receptionist agent with custom welcome configuration"""
-        return ReceptionistAgent(
-            llm=self.llm,
-            verbose=self.env['DEBUG']
+    def _init_llm(self) -> ChatOpenAI:
+        """Initialize LLM"""
+        return ChatOpenAI(
+            model=self.env['AI_MODEL'],
+            temperature=0.7,
+            api_key=self.env['OPENAI_API_KEY']
         )
     
-    def create_welcome_task(self) -> Task:
-        """Create the welcome task"""
-        return Task(
-            description="Welcome the user and show available commands",
-            agent=self.receptionist()
-        )
-
-    def kickoff(self):
+    @classmethod
+    def kickoff(cls, config):
         """Create and run the crew"""
-        welcome_task = self.create_welcome_task()
+        agency = cls(config)
+        receptionist = ReceptionistAgent(config=agency.config)
+        
+        welcome_task = Task(
+            description="Welcome the user and show available commands",
+            agent=receptionist
+        )
         
         crew = Crew(
-            agents=[welcome_task.agent],
+            agents=[receptionist],
             tasks=[welcome_task]
         )
         
