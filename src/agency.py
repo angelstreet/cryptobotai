@@ -31,15 +31,24 @@ class CryptoAgency:
             llm_params["api_key"] = 'AI_API_KEY'
         return LLM(**llm_params)
     
-    def start(self) -> None:
-        """Start the crypto agency"""      
-        # Initialize agents
-        self.receptionist = ReceptionistAgent(config=self.config)
-        self.portfolio_manager = PortfolioManagerAgent(config=self.config)
-        # kickoff workflow
+    def kickoff_receptionnist(self) -> None:
+        """Kickoff the receptionnist"""
         flow = ReceptionistFlow(
             config=self.config,
             receptionist=self.receptionist,
             portfolio_manager =self.portfolio_manager
         )
         flow.kickoff()     
+    
+    def kickoff_portfolio_manager(self) -> None:
+        """Kickoff the portfolio manager"""
+        self.portfolio_manager.show_portfolio()   
+
+    def start(self) -> None:
+        """Start the crypto agency"""      
+        # Initialize agents
+        self.receptionist = ReceptionistAgent(config=self.config)
+        self.portfolio_manager = PortfolioManagerAgent(config=self.config)
+        # kickoff workflow
+        #self.kickoff_receptionnist()
+        self.kickoff_portfolio_manager()
