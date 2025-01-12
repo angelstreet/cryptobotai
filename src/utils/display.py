@@ -384,185 +384,6 @@ def print_loading_complete():
     """Print market data loading complete message"""
     console.print("Market data loading complete.", style="success")
 
-def print_api_params(config=None):
-    """Print API configuration parameters"""
-    console.print("\n[dim]─── API Configuration ───[/]")
-    table = Table(show_edge=False, box=None, padding=(0, 1))
-    table.add_column("Provider", style="dim")
-    table.add_column("Model", style="dim")
-    table.add_column("Temperature", style="dim")
-    table.add_column("Max Tokens", style="dim")
-    table.add_column("Base URL", style="dim")
-    
-    # Get provider with better default handling
-    provider = os.getenv('AI_PROVIDER', 'LOCAL')
-    if not provider:
-        provider = 'LOCAL'
-    
-    row = [
-        provider,
-        config.model if config else 'llama2',
-        str(config.temperature if config else '0.7'),
-        str(config.max_tokens if config else '200'),
-        os.getenv("API_URL", "http://localhost:11434")
-    ]
-    
-    table.add_row(*row)
-    console.print(table)
-
-def print_portfolio(portfolio: Dict):
-    """Print positions overview split into FIAT/Stablecoins and Cryptocurrencies"""
-    console.print("\n[dim]─── Portfolio Overview ───[/]")
-    # Split positions into stables and crypto
-    stables = {}
-    crypto = {}
-    stable_coins = {'EUR/USDT', 'USDT/USD', 'USDC/USD', 'BUSD/USD'}
-    currency = portfolio.get('display_currency', '$')
-    
-    for symbol, pos in portfolio['positions'].items():
-        if symbol in stable_coins:
-            stables[symbol] = pos
-        else:
-            crypto[symbol] = pos
-
-    # Calculate totals first
-    stable_total = _calculate_total_value(stables, portfolio['estimated_prices'])
-    crypto_total = _calculate_total_value(crypto, portfolio['estimated_prices'])
-    total = stable_total + crypto_total
-    
-    # Print total at top
-    console.print(f"Total Balance : {currency}{total:.2f}")
-    console.print(f"Cash : {currency}{stable_total:.2f}")
-    console.print(f"Crypto : {currency}{crypto_total:.2f}")
-    # Print FIAT/Stablecoins table
-    if stables:
-        _print_positions_table("FIAT/Stablecoins", stables, portfolio['estimated_prices'], currency)
-
-    # Print Cryptocurrencies table
-    if crypto:
-        _print_positions_table("Cryptocurrencies", crypto, portfolio['estimated_prices'], currency)
-
-def _calculate_total_value(positions: Dict, estimated_prices: Dict) -> float:
-    """Calculate total value of positions"""
-    total_value = 0.0
-    for symbol, pos in positions.items():
-        current_price = estimated_prices.get(symbol, pos['mean_price'])
-        estimated_value = pos['amount'] * current_price
-        total_value += estimated_value
-    return total_value
-
-def _print_positions_table(title: str, positions: Dict, estimated_prices: Dict, currency: str) -> None:
-    """Print positions table"""
-    console.print(f"\n[dim]─── {title} ───[/]")
-    table = Table(show_edge=True, box=None)
-    table.add_column("Position", style="dim")
-    table.add_column("Amount", justify="right", style="dim")
-    table.add_column(f"Value ({currency})", justify="right", style="dim")
-    
-    for symbol, pos in positions.items():
-        current_price = estimated_prices.get(symbol, pos['mean_price'])
-        estimated_value = pos['amount'] * current_price
-        table.add_row(
-            symbol.split('/')[0],
-            f"{pos['amount']:.6f}",
-            f"{currency}{estimated_value:.2f}"
-        )
-    
-    console.print(table)
-
-def print_transactions(portfolio: Dict, symbol: str):
-    """Print trades overview for a specific symbol"""
-    if symbol not in portfolio['positions']:
-        console.print(f"\nNo trades found for {symbol}")
-        return
-        
-    position = portfolio['positions'][symbol]
-    
-    console.print("\n[dim]─── Trades Overview ───[/]")
-    
-    trades_table = Table(show_edge=True, box=None)
-    trades_table.add_column("Pair", style="dim")
-    trades_table.add_column("Open date", style="dim")
-    trades_table.add_column("Close date", style="dim")
-    trades_table.add_column("Duration (hours)", justify="right", style="dim")
-    trades_table.add_column("Size (EUR)", justify="right", style="dim")
-    
-    for trade in position['trades']:
-        trades_table.add_row(
-            trade['pair'],
-            trade['open_date'],
-            trade['close_date'] or "",
-            f"{trade['duration_hours']:.1f}" if trade['duration_hours'] else "",
-            f"{trade['size_eur']:.2f}"
-        )
-    
-    console.print(trades_table)
-
-def print_mock_loading():
-    """Print mock data loading message"""
-    console.print("\n[dim]─── Mock Data Loading ───[/]")
-    console.print("Loading mock market data...", style="info")
-    console.print("Mock data loaded successfully.", style="success")
-
-def print_mock_trading():
-    """Print mock trading message"""
-    console.print("\n[dim]─── Mock Trading ───[/]")
-    console.print("Generating mock trading decision...", style="info")
-
-def print_orders_compact(portfolio: Dict):
-    """Print compact orders overview"""
-    console.print("\n[dim]─── Orders Overview ───[/]")
-    
-    table = Table(show_edge=True, box=None)
-    table.add_column("Market", style="dim")
-    table.add_column("Order", style="dim")
-    table.add_column("Status", style="dim")
-    table.add_column("Date", style="dim")
-    table.add_column("Amount", justify="right", style="dim")
-    table.add_column("Price", justify="right", style="dim")
-    
-    for symbol, pos in portfolio['positions'].items():
-        for order in pos['orders']:
-            # Style based on order type
-            order_style = "green" if "Buy" in order['order_type'] else "red"
-            status_style = "green" if order['status'] == 'Filled' else "yellow"
-            
-            table.add_row(
-                order['pair'],
-                f"[{order_style}]{order['order_type']}[/]",
-                f"[{status_style}]{order['status']}[/]",
-                order['last_filled'],
-                f"{order['amount']:.6f}",
-                f"€{order['execution_price']:.2f}"
-            )
-    
-    console.print(table)
-
-def print_order_details(order: Dict):
-    """Print detailed view of a specific order"""
-    console.print(f"\n[dim]─── Order Details: {order['order_id']} ───[/]")
-    
-    table = Table(show_edge=True, box=None)
-    table.add_column("Field", style="dim")
-    table.add_column("Value", style="dim")
-    
-    details = [
-        ("Market", order['pair']),
-        ("Order Type", order['order_type']),
-        ("Status", order['status']),
-        ("Last Filled", order['last_filled']),
-        ("Amount", f"{order['amount']:.6f}"),
-        ("Price", f"€{order['execution_price']:.2f}"),
-        ("Subtotal", f"€{order['subtotal']:.2f}"),
-        ("Fee", f"€{order['fee']:.2f}" if order['fee'] else "N/A"),
-        ("Total", f"€{order['total']:.2f}")
-    ]
-    
-    for field, value in details:
-        table.add_row(field, str(value))
-    
-    console.print(table)
-
 def print_backtest_progress(message: str):
     """Print backtest progress message"""
     print(f"[Backtest] {message}")
@@ -570,3 +391,17 @@ def print_backtest_progress(message: str):
 def print_backtest_error(message: str):
     """Print backtest error message"""
     print(f"[Backtest Error] {message}")
+
+def print_mock_trading():
+    """Print mock trading message"""
+    console.print("\n[dim]─── Mock Trading ───[/]")
+    console.print("Generating mock trading decision...", style="info")
+
+def print_trading_error(error: str):
+    """Print trading error message"""
+    console.print(f"\n[red]Trading Error: {error}[/]")
+
+def print_trading_data(data: dict):
+    """Print trading data"""
+    console.print("\n[dim]─── Trading Data ───[/]")
+    console.print(data)

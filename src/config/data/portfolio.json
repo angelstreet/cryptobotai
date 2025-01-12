@@ -1,0 +1,43 @@
+{
+    "exchanges": {
+        "virtual": {
+            "name": "virtual",
+            "accounts": {
+                "simulation-1": {
+                    "name": "Virtual Portfolio 1",
+                    "account_type": "VIRTUAL",
+                    "positions": {
+                        "BTC/USDT": {
+                            "amount": -1.0,
+                            "mean_price": 65000.0,
+                            "pending_buy": 0.0,
+                            "pending_sell": 0.0,
+                            "cost_eur": 65000.0,
+                            "value_eur": 65000.0,
+                            "orders": [
+                                {
+                                    "order_id": "buy-20250112-195220",
+                                    "pair": "BTC/USDT",
+                                    "order_type": "Market Buy",
+                                    "status": "Filled",
+                                    "last_filled": "2025-01-12T19:52:20.642813",
+                                    "amount": 1.0,
+                                    "execution_price": 65000.0,
+                                    "subtotal": 65000.0,
+                                    "fee": 65.0,
+                                    "total": 65064.99999999999
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        }
+    },
+    "estimated_prices": {},
+    "display_currency": "$",
+    "currency_rates": {
+        "EUR/USD": 1.08,
+        "USD/EUR": 0.926
+    }
+}

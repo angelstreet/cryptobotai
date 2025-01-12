@@ -56,3 +56,6 @@ class ReceptionistAgent(Agent):
             console.print(f"[red]Invalid command ![/] ({', '.join(VALID_COMMANDS)})")
             return self.get_user_input()
     
+    def kickoff(self) -> None:
+        self.print_welcome()
+        self.print_helper()

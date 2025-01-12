@@ -1,0 +1,21 @@
+{
+    "exchanges": {
+        "virtual": {
+            "name": "virtual",
+            "accounts": {
+                "simulation-1": {
+                    "account_id": "simulation-1",
+                    "name": "Virtual Portfolio 1",
+                    "account_type": "VIRTUAL",
+                    "positions": {}
+                }
+            }
+        }
+    },
+    "estimated_prices": {},
+    "display_currency": "$",
+    "currency_rates": {
+        "EUR/USD": 1.08,
+        "USD/EUR": 0.926
+    }
+}

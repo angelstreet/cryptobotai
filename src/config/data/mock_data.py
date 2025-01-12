@@ -1,4 +1,6 @@
 from typing import Dict, Any
+from datetime import datetime
+from src.config.models.action import Action
 
 def get_mock_market_data(exchange: str = 'binance', symbol: str = 'BTC/USDT') -> Dict[str, Any]:
     """Return mock market data based on real historical data"""
@@ -24,4 +26,4 @@ def get_mock_trade_suggestion(action: str = 'BUY', amount: float = 0.1) -> Dict[
         'reasoning': """The minimum confidence level is set at 60%, which we have met based on these parameters. 
         Therefore, a cautious buy order with the specified amount would be appropriate, but keep in mind that there 
         are no guarantees in trading. Always monitor your positions closely and be prepared to adjust as necessary."""
-    } 
+    }

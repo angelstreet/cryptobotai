@@ -1,90 +1,282 @@
-# src/agents/portfolio_manager.py
-from typing import Dict, Any, Optional, List
-from crewai import Agent, Task
+from typing import Dict, Optional
 from pydantic import Field, ConfigDict
-from src.config.models.portfolio import Portfolio, PortfolioType
+from rich.console import Console
+from rich.table import Table
+from datetime import datetime
+from pathlib import Path
+import json
 
-class PortfolioManagerAgent(Agent):
-    """Agent responsible for portfolio management"""
-    model_config = ConfigDict(arbitrary_types_allowed=True)
-    portfolio: Dict[str, float] = Field(default_factory=lambda: {
-        'BTC': 0.5,   # 0.5 Bitcoin
-        'ETH': 5.0,   # 5 Ethereum
-        'USDT': 1000  # 1000 Tether
-    })
-    market_prices: Dict[str, float] = Field(default_factory=lambda: {
-        'BTC': 50000,  # Bitcoin price
-        'ETH': 3000,   # Ethereum price
-        'USDT': 1      # Tether price
-    })
-    
-    def __init__(self, config=None):
-        """Initialize portfolio manager"""
-        super().__init__(
-            name="Portfolio Manager",
-            role="Crypto Portfolio Tracker",
-            goal="Provide comprehensive portfolio overview and asset tracking",
-            backstory="An expert in managing and analyzing cryptocurrency portfolios",
-            tools=[],
-            llm=None,
-            verbose=False
+from src.config.models.portfolio import (
+    Portfolio, Position, OrderDetails, Exchange, 
+    Account, AccountType, Action
+)
+
+class PortfolioPrinter:
+    def __init__(self, console: Console):
+        self.console = console
+
+    def print_transaction_added(self, action: Action, amount: float, symbol: str, 
+                              price: float, exchange: str, account: str):
+        self.console.print(
+            f"\n[green]Transaction added:[/] {action.value} {amount} {symbol} @ {price:,.2f} "
+            f"on {exchange} (Account: {account})"
         )
 
-    def execute_task(self, task: Task, context: Optional[str] = None, tools: Optional[List] = None) -> Dict[str, Any]:
-        """
-        Execute tasks for the portfolio manager
+    def print_portfolio(self, portfolio: Dict):
+        self.console.print("\n[dim]─── Portfolio Overview ───[/]")
         
-        Args:
-            task (Task): The task to execute
-            context (Optional[str]): Additional context for the task
-            tools (Optional[List]): List of available tools
+        currency = portfolio.get('display_currency', '$')
+        total_portfolio_value = 0
         
-        Returns:
-            Dict[str, Any]: Task execution result
-        """
-        if "portfolio" in task.description.lower():
-            return self.show_portfolio()
-        
-        return {"error": "Unknown task"}
-
-    def show_portfolio(self) -> Dict[str, Any]:
-        """
-        Generate a detailed portfolio overview
-        
-        Returns:
-            Dict[str, Any]: Comprehensive portfolio details
-        """
-        # Calculate total value and individual asset values
-        portfolio_details = {
-            'total_value': 0,
-            'assets': []
-        }
-        
-        for asset, amount in self.portfolio.items():
-            current_price = self.market_prices.get(asset, 0)
-            asset_value = amount * current_price
+        for exchange_name, exchange in portfolio['exchanges'].items():
+            self.console.print(f"\n[bold]{exchange_name}[/]")
             
-            portfolio_details['total_value'] += asset_value
-            portfolio_details['assets'].append({
-                'symbol': asset,
-                'amount': amount,
-                'price_per_unit': current_price,
-                'total_value': asset_value
-            })
+            for account_id, account in exchange['accounts'].items():
+                account_value = 0
+                
+                table = Table(show_edge=True, box=None)
+                table.add_column(f"Account: {account['name']} ({account['account_type']})", style="dim")
+                table.add_column("Amount", justify="right", style="dim")
+                table.add_column("Price", justify="right", style="dim")
+                table.add_column("Value", justify="right", style="dim")
+                
+                for symbol, pos in account['positions'].items():
+                    current_price = portfolio['estimated_prices'].get(symbol, pos['mean_price'])
+                    value = pos['amount'] * current_price
+                    account_value += value
+                    
+                    table.add_row(
+                        symbol.split('/')[0],
+                        f"{pos['amount']:.8f}",
+                        f"{currency}{current_price:,.2f}",
+                        f"{currency}{value:,.2f}"
+                    )
+                
+                total_portfolio_value += account_value
+                table.add_row(
+                    "[bold]Total[/]", "", "",
+                    f"[bold]{currency}{account_value:,.2f}[/]"
+                )
+                self.console.print(table)
         
-        # Print portfolio details
-        print(f"Total Portfolio Value: ${portfolio_details['total_value']:,.2f}")
-        print("\nAsset Breakdown:")
-        for asset in portfolio_details['assets']:
-            print(f"{asset['symbol']}: {asset['amount']} @ ${asset['price_per_unit']:,.2f} = ${asset['total_value']:,.2f}")
-        
-        return portfolio_details
+        self.console.print(f"\n[bold]Total Portfolio Value: {currency}{total_portfolio_value:,.2f}[/]")
 
-    def update_market_prices(self, new_prices: Dict[str, float]):
-        """
-        Update market prices for assets
+    def print_orders(self, portfolio: Dict, exchange: Optional[str] = None, 
+                    account: Optional[str] = None, order_id: Optional[str] = None):
+        table = Table(show_edge=True, box=None)
+        table.add_column("Exchange", style="dim")
+        table.add_column("Account", style="dim")
+        table.add_column("Market", style="dim")
+        table.add_column("Type", style="dim")
+        table.add_column("Date", style="dim")
+        table.add_column("Amount", justify="right", style="dim")
+        table.add_column("Price", justify="right", style="dim")
         
-        Args:
-            new_prices (Dict[str, float]): New market prices for assets
-        """
-        self.market_prices.update(new_prices)
+        currency = portfolio.get('display_currency', '$')
+        
+        for exch_name, exch_data in portfolio['exchanges'].items():
+            if exchange and exchange != exch_name:
+                continue
+                
+            for acc_id, acc_data in exch_data['accounts'].items():
+                if account and account != acc_id:
+                    continue
+                    
+                for symbol, pos in acc_data['positions'].items():
+                    for order in pos['orders']:
+                        if order_id and order['order_id'] != order_id:
+                            continue
+                            
+                        order_style = "green" if "Buy" in order['order_type'] else "red"
+                        table.add_row(
+                            exch_name,
+                            acc_data['name'],
+                            order['pair'],
+                            f"[{order_style}]{order['order_type']}[/]",
+                            order['last_filled'],
+                            f"{order['amount']:.8f}",
+                            f"{currency}{order['execution_price']:.2f}"
+                        )
+        
+        self.console.print("\n[dim]─── Orders Overview ───[/]")
+        self.console.print(table)
+
+class PortfolioManagerAgent:
+    """Agent responsible for portfolio management"""
+    def __init__(self, config):
+        self.portfolio_path = str(Path(__file__).parent.parent / 'config' / 'data' / 'portfolio.json')
+        self.printer = PortfolioPrinter(Console())
+        
+        self.portfolio = self._load_portfolio()  # Load portfolio immediately
+        self.validate_portfolio_structure()  # Ensure all required fields exist
+        self.initialize_virtual_exchange()  # Initialize virtual exchange if it doesn't exist
+
+    def _load_portfolio(self, path: Optional[str] = None) -> Portfolio:
+        """Load portfolio from file, handling empty or invalid files"""
+        if path:
+            self.portfolio_path = path
+        try:
+            with open(self.portfolio_path, 'r') as f:
+                data = json.load(f)
+                
+                # Check if file is empty or missing required structure
+                if not data or 'exchanges' not in data:
+                    # Return fresh portfolio
+                    return Portfolio()
+                
+                return Portfolio.parse_obj(data)
+                
+        except (FileNotFoundError, json.JSONDecodeError):
+            # Handle both missing file and invalid JSON
+            return Portfolio()
+        except Exception as e:
+            print(f"[red]Error loading portfolio: {str(e)}[/red]")
+            return Portfolio()
+
+    def validate_portfolio_structure(self) -> None:
+        """Ensure portfolio has all required fields with valid types"""
+        if not hasattr(self.portfolio, 'exchanges'):
+            self.portfolio.exchanges = {}
+            
+        if not hasattr(self.portfolio, 'estimated_prices'):
+            self.portfolio.estimated_prices = {}
+            
+        if not hasattr(self.portfolio, 'currency_rates'):
+            self.portfolio.currency_rates = {
+                "EUR/USD": 1.08,
+                "USD/EUR": 0.926
+            }
+            
+        if not hasattr(self.portfolio, 'display_currency'):
+            self.portfolio.display_currency = '$'
+            
+        self._save_portfolio()
+
+    def _save_portfolio(self):
+        with open(self.portfolio_path, 'w') as f:
+            portfolio_dict = self.portfolio.dict()
+            json.dump(portfolio_dict, f, indent=4)
+
+    def create_exchange(self, name: str) -> Exchange:
+        if name not in self.portfolio.exchanges:
+            self.portfolio.exchanges[name] = Exchange(name=name)
+            self._save_portfolio()
+        return self.portfolio.exchanges[name]
+
+    def create_account(self, exchange_name: str, account_id: str, 
+                      account_name: str, account_type: AccountType) -> Account:
+        exchange = self.create_exchange(exchange_name)
+        if account_id not in exchange.accounts:
+            exchange.accounts[account_id] = Account(
+                account_id=account_id,
+                name=account_name,
+                account_type=account_type
+            )
+            self._save_portfolio()
+        return exchange.accounts[account_id]
+
+    def show_portfolio(self):
+        """Display portfolio overview"""
+        portfolio_dict = self.portfolio.dict()  # Now self.portfolio is a Portfolio instance
+        self.printer.print_portfolio(portfolio_dict)
+
+    def show_orders(self, exchange: Optional[str] = None, 
+                   account: Optional[str] = None, order_id: Optional[str] = None):
+        portfolio_dict = self.portfolio.dict()
+        self.printer.print_orders(portfolio_dict, exchange, account, order_id)
+
+    def add_transaction(self, exchange: str, account_id: str, symbol: str, 
+                    amount: float, price: float, action: Action) -> None:
+        """Add a new transaction to a specific account in an exchange"""
+        if exchange not in self.portfolio.exchanges or \
+        account_id not in self.portfolio.exchanges[exchange].accounts:
+            raise ValueError(f"Invalid exchange or account: {exchange}/{account_id}")
+
+        account = self.portfolio.exchanges[exchange].accounts[account_id]
+        
+        # Create the order details
+        order = OrderDetails(
+            order_id=f"{action.value.lower()}-{datetime.now().strftime('%Y%m%d-%H%M%S')}",
+            pair=symbol,
+            order_type=f"Market {action.value.title()}",
+            amount=amount,
+            execution_price=price,
+            subtotal=amount * price,
+            fee=amount * price * 0.001,
+            total=amount * price * 1.001
+        )
+
+        # Handle position creation or update
+        if symbol not in account.positions:
+            # Create new position
+            position = Position(
+                amount=amount if action == Action.BUY else -amount,
+                mean_price=price,
+                cost_eur=amount * price,
+                value_eur=amount * price,
+                orders=[order]  # Initialize with the current order
+            )
+            account.positions[symbol] = position
+        else:
+            # Update existing position
+            position = account.positions[symbol]
+            old_amount = position.amount
+            old_cost = old_amount * position.mean_price
+
+            if action == Action.BUY:
+                # Update amount and recalculate mean price for buys
+                new_amount = old_amount + amount
+                new_cost = old_cost + (amount * price)
+                position.amount = new_amount
+                position.mean_price = new_cost / new_amount if new_amount > 0 else price
+            else:  # SELL
+                # Update amount for sells
+                position.amount = max(0.0, old_amount - amount)
+                
+            # Update position value
+            position.value_eur = position.amount * price
+            
+            # Append the order to the position's order history
+            position.orders.append(order)
+            
+            # Remove position if amount is 0
+            if position.amount == 0:
+                del account.positions[symbol]
+
+        # Save changes
+        self._save_portfolio()
+        
+        # Print confirmation
+        self.printer.print_transaction_added(
+            action, amount, symbol, price, exchange, account.name
+        )
+
+    def initialize_virtual_exchange(self):
+        """Initialize virtual exchange with a default simulation account if it doesn't exist"""
+        if "virtual" not in self.portfolio.exchanges:
+            # Create virtual exchange
+            virtual_exchange = Exchange(name="virtual")
+            
+            # Create a default simulation account
+            virtual_account = Account(
+                name="Virtual Portfolio 1",
+                account_type=AccountType.VIRTUAL,
+                positions={}
+            )
+            
+            # Add the account to the exchange
+            virtual_exchange.accounts["simulation-1"] = virtual_account
+            
+            # Add the exchange to the portfolio
+            self.portfolio.exchanges["virtual"] = virtual_exchange
+            
+            # Ensure we have default currency rates
+            if not self.portfolio.currency_rates:
+                self.portfolio.currency_rates = {
+                    "EUR/USD": 1.08,
+                    "USD/EUR": 0.926
+                }
+            
+            # Save the updated portfolio
+            self._save_portfolio()
+            print(f"[green]Virtual exchange initialized with account: {virtual_account.name}[/]")
