@@ -77,6 +77,28 @@
                                     "total": 36180.0
                                 }
                             ]
+                        },
+                        "ETH/USDT": {
+                            "amount": 1.0,
+                            "mean_price": 3276.46,
+                            "pending_buy": 0.0,
+                            "pending_sell": 0.0,
+                            "estimated_cost_usd": 3292.8423000000003,
+                            "estimated_value_usd": 3276.46,
+                            "orders": [
+                                {
+                                    "order_id": "buy-20250112-221250",
+                                    "pair": "ETH/USDT",
+                                    "order_type": "Market Buy",
+                                    "status": "Filled",
+                                    "last_filled": "2025-01-12 22:12:50",
+                                    "amount": 1.0,
+                                    "execution_price": 3276.46,
+                                    "subtotal": 3276.46,
+                                    "fee": 16.3823,
+                                    "total": 3292.8423000000003
+                                }
+                            ]
                         }
                     }
                 }

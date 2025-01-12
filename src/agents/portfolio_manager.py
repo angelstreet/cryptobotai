@@ -70,6 +70,9 @@ class PortfolioPrinter:
         table.add_column("Date", style="dim")
         table.add_column("Amount", justify="right", style="dim")
         table.add_column("Price", justify="right", style="dim")
+        table.add_column("Subtotal", justify="right", style="dim")
+        table.add_column("Fee", justify="right", style="dim")
+        table.add_column("Total", justify="right", style="dim")
         
         currency = portfolio.get('display_currency', '$')
         
@@ -87,6 +90,7 @@ class PortfolioPrinter:
                             continue
                             
                         order_style = "green" if "Buy" in order['order_type'] else "red"
+                        
                         table.add_row(
                             exch_name,
                             acc_data['name'],
@@ -94,7 +98,10 @@ class PortfolioPrinter:
                             f"[{order_style}]{order['order_type']}[/]",
                             order['last_filled'],
                             f"{order['amount']:.8f}",
-                            f"{currency}{order['execution_price']:.2f}"
+                            f"{currency}{order['execution_price']:,.2f}",
+                            f"{currency}{order['subtotal']:,.2f}",
+                            f"{currency}{order['fee']:,.2f}",
+                            f"{currency}{order['total']:,.2f}"
                         )
         
         self.console.print("\n[dim]─── Orders Overview ───[/]")
@@ -193,23 +200,21 @@ class PortfolioManagerAgent:
 
         account = self.portfolio.exchanges[exchange].accounts[account_id]
         
-        # Calculate transaction values using Decimal from the start
-        amount_d = amount
-        price_d = price
-        subtotal_d = amount_d * price_d
-        fee_d = subtotal_d * (fee_rate / float('100'))
-        total_d = subtotal_d + fee_d
+        # Calculate transaction values
+        subtotal = amount * price                    # 0.5 * 70000 = 35000
+        fee = subtotal * (fee_rate / float('100'))   # 35000 * (0.5/100) = 175
+        total = subtotal + fee                       # 35000 + 175 = 35175
         
         # Create the order details
         order = OrderDetails(
             order_id=f"{action.value.lower()}-{datetime.now().strftime('%Y%m%d-%H%M%S')}",
             pair=symbol,
             order_type=f"Market {action.value.title()}",
-            amount=float(amount_d),
-            execution_price=float(price_d),
-            subtotal=float(subtotal_d),
-            fee=float(fee_d),
-            total=float(total_d),
+            amount=float(amount),
+            execution_price=float(price),
+            subtotal=float(subtotal),
+            fee=float(fee),
+            total=float(total),
             last_filled=datetime.now().strftime('%Y-%m-%d %H:%M:%S')
         )
         if action.value == Action.SELL:

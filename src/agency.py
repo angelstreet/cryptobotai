@@ -49,7 +49,8 @@ class CryptoAgency:
         # kickoff workflow
         #self.receptionnist_flow()
         
-        self.portfolio_manager.add_transaction("virtual","virtual-1","BTC/USDT",0.5,72000,Action.BUY)
+        #self.portfolio_manager.add_transaction("virtual","virtual-1","ETH/USDT",1,3276.46,Action.BUY)
         #self.portfolio_manager.add_transaction("virtual","virtual-1","BTC/USDT",0.1,80000,Action.SELL) 
         #self.portfolio_manager.delete_transaction("virtual","virtual-1","sell-20250112-202525")
         self.portfolio_manager.show_portfolio()
+        self.portfolio_manager.show_orders()
