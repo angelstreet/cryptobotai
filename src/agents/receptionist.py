@@ -31,7 +31,7 @@ class HelpHandler:
 
 class WelcomeHandler:
     def run(self) -> Dict[str, Any]:
-        console.print("\n[bold cyan]Hi, crypto lover! How can I help you?[/]\n")
+        console.print("\n[bold cyan]Hi, crypto lover! How can I help you?[/]")
         return {'message': 'welcome'}
 
 class UserInputHandler:

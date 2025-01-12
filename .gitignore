@@ -1,2 +1,6 @@
 .env
 *.pyc
+launch.json
+settings.json
+secret.key
+TODO.md
