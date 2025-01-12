@@ -4,7 +4,7 @@ from crewai import Flow, Agent
 from src.agents.receptionist import ReceptionistAgent
 
 class ReceptionistFlow(Flow):
-    """Flow for handling welcome and user guidance"""
+    """Routing workflow for receptionist"""
     
     def __init__(self, config, receptionist: ReceptionistAgent, portfolio_manager: Agent):
         self.config = config
@@ -19,7 +19,6 @@ class ReceptionistFlow(Flow):
         elif cmd == 'help':
             self.receptionist.print_helper()
 
-
     def kickoff(self) -> Dict[str, Any]:
         """Run the receptionist flow with direct handler execution."""
         self.receptionist.print_welcome()
@@ -29,5 +28,3 @@ class ReceptionistFlow(Flow):
             if user_input == 'exit':
                 break
             self.route_command(user_input)
-            
-            
