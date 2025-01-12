@@ -50,4 +50,5 @@ class CryptoAgency:
         #self.receptionnist_flow()
         
         self.portfolio_manager.show_portfolio()
-        self.portfolio_manager.add_transaction("virtual","simulation-1","BTC/USDT",1.0,65000.0,Action.BUY)
+        self.portfolio_manager.add_transaction("virtual","virtual-1","BTC/USDT",0.5,70000,Action.SELL)
+        self.portfolio_manager.show_portfolio()

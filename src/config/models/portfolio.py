@@ -34,18 +34,20 @@ class Position:
     mean_price: float = 0.0
     pending_buy: float = 0.0
     pending_sell: float = 0.0
-    cost_eur: float = 0.0
-    value_eur: float = 0.0
+    estimated_cost_usd: float = 0.0
+    estimated_value_usd: float = 0.0
     orders: List[OrderDetails] = field(default_factory=list)
 
 @dataclass
 class Account:
+    account_id: str
     name: str
     account_type: AccountType
     positions: Dict[str, Position] = field(default_factory=dict)
     
     def dict(self):
         return {
+            'account_id': self.account_id,
             'name': self.name,
             'account_type': self.account_type.value,
             'positions': {
@@ -54,8 +56,8 @@ class Account:
                     'mean_price': pos.mean_price,
                     'pending_buy': pos.pending_buy,
                     'pending_sell': pos.pending_sell,
-                    'cost_eur': pos.cost_eur,
-                    'value_eur': pos.value_eur,
+                    'estimated_cost_usd': pos.estimated_cost_usd,
+                    'estimated_value_usd': pos.estimated_value_usd,
                     'orders': [
                         {
                             'order_id': order.order_id,
@@ -119,6 +121,7 @@ class Portfolio:
             
             for account_id, account_data in exchange_data.get('accounts', {}).items():
                 account = Account(
+                    account_id=account_data['account_id'],
                     name=account_data['name'],
                     account_type=AccountType(account_data['account_type'])
                 )
@@ -145,8 +148,8 @@ class Portfolio:
                         mean_price=pos_data['mean_price'],
                         pending_buy=pos_data.get('pending_buy', 0.0),
                         pending_sell=pos_data.get('pending_sell', 0.0),
-                        cost_eur=pos_data['cost_eur'],
-                        value_eur=pos_data['value_eur'],
+                        estimated_cost_usd=pos_data['estimated_cost_usd'],
+                        estimated_value_usd=pos_data['estimated_value_usd'],
                         orders=orders
                     )
                 

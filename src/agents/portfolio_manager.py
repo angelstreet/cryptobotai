@@ -18,8 +18,8 @@ class PortfolioPrinter:
     def print_transaction_added(self, action: Action, amount: float, symbol: str, 
                               price: float, exchange: str, account: str):
         self.console.print(
-            f"\n[green]Transaction added:[/] {action.value} {amount} {symbol} @ {price:,.2f} "
-            f"on {exchange} (Account: {account})"
+            f"\n[green]{action.value}[/] {amount} {symbol} @ {price:,.2f} "
+            f"on {exchange} ({account})"
         )
 
     def print_portfolio(self, portfolio: Dict):
@@ -35,7 +35,7 @@ class PortfolioPrinter:
                 account_value = 0
                 
                 table = Table(show_edge=True, box=None)
-                table.add_column(f"Account: {account['name']} ({account['account_type']})", style="dim")
+                table.add_column(f"{account['name']}", style="dim")
                 table.add_column("Amount", justify="right", style="dim")
                 table.add_column("Price", justify="right", style="dim")
                 table.add_column("Value", justify="right", style="dim")
@@ -47,7 +47,7 @@ class PortfolioPrinter:
                     
                     table.add_row(
                         symbol.split('/')[0],
-                        f"{pos['amount']:.8f}",
+                        f"{pos['amount']:.4f}",
                         f"{currency}{current_price:,.2f}",
                         f"{currency}{value:,.2f}"
                     )
@@ -186,13 +186,29 @@ class PortfolioManagerAgent:
         self.printer.print_orders(portfolio_dict, exchange, account, order_id)
 
     def add_transaction(self, exchange: str, account_id: str, symbol: str, 
-                    amount: float, price: float, action: Action) -> None:
-        """Add a new transaction to a specific account in an exchange"""
+                    amount: float, price: float, action: Action, fee_rate: float = 0.5) -> None:
+        """
+        Add a new transaction to a specific account in an exchange
+        
+        Args:
+            exchange (str): Exchange name
+            account_id (str): Account identifier
+            symbol (str): Trading pair symbol
+            amount (float): Transaction amount
+            price (float): Execution price
+            action (Action): BUY or SELL action
+            fee_rate (float, optional): Fee rate as decimal. Defaults to 0.5 (0.5%)
+        """
         if exchange not in self.portfolio.exchanges or \
-        account_id not in self.portfolio.exchanges[exchange].accounts:
+           account_id not in self.portfolio.exchanges[exchange].accounts:
             raise ValueError(f"Invalid exchange or account: {exchange}/{account_id}")
 
         account = self.portfolio.exchanges[exchange].accounts[account_id]
+        
+        # Calculate transaction values
+        subtotal = amount * price
+        fee = subtotal * fee_rate
+        total = subtotal + fee
         
         # Create the order details
         order = OrderDetails(
@@ -201,20 +217,20 @@ class PortfolioManagerAgent:
             order_type=f"Market {action.value.title()}",
             amount=amount,
             execution_price=price,
-            subtotal=amount * price,
-            fee=amount * price * 0.001,
-            total=amount * price * 1.001
+            subtotal=subtotal,
+            fee=fee,  # Using calculated fee
+            total=total  # Using calculated total
         )
 
         # Handle position creation or update
         if symbol not in account.positions:
             # Create new position
             position = Position(
-                amount=amount if action == Action.BUY else -amount,
+                amount=amount,
                 mean_price=price,
-                cost_eur=amount * price,
-                value_eur=amount * price,
-                orders=[order]  # Initialize with the current order
+                estimated_cost_usd=amount * price,  # Changed from cost_eur
+                estimated_value_usd=amount * price,  # Changed from value_eur
+                orders=[order]
             )
             account.positions[symbol] = position
         else:
@@ -234,7 +250,7 @@ class PortfolioManagerAgent:
                 position.amount = max(0.0, old_amount - amount)
                 
             # Update position value
-            position.value_eur = position.amount * price
+            position.estimated_value_usd = position.amount * price  # Changed from value_eur
             
             # Append the order to the position's order history
             position.orders.append(order)
@@ -253,24 +269,26 @@ class PortfolioManagerAgent:
 
     def initialize_virtual_exchange(self):
         """Initialize virtual exchange with a default simulation account if it doesn't exist"""
+        # Create virtual exchange if it doesn't exist
         if "virtual" not in self.portfolio.exchanges:
-            # Create virtual exchange
+            # Create the exchange
             virtual_exchange = Exchange(name="virtual")
             
             # Create a default simulation account
             virtual_account = Account(
-                name="Virtual Portfolio 1",
+                account_id="virtual-1",
+                name="Portfolio 1",
                 account_type=AccountType.VIRTUAL,
                 positions={}
             )
             
             # Add the account to the exchange
-            virtual_exchange.accounts["simulation-1"] = virtual_account
+            virtual_exchange.accounts["virtual-1"] = virtual_account
             
             # Add the exchange to the portfolio
             self.portfolio.exchanges["virtual"] = virtual_exchange
             
-            # Ensure we have default currency rates
+            # Ensure we have default currency rates if not already set
             if not self.portfolio.currency_rates:
                 self.portfolio.currency_rates = {
                     "EUR/USD": 1.08,

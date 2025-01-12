@@ -3,29 +3,52 @@
         "virtual": {
             "name": "virtual",
             "accounts": {
-                "simulation-1": {
-                    "name": "Virtual Portfolio 1",
+                "virtual-1": {
+                    "account_id": "virtual-1",
+                    "name": "Portfolio 1",
                     "account_type": "VIRTUAL",
                     "positions": {
-                        "BTC/USDT": {
-                            "amount": -1.0,
-                            "mean_price": 65000.0,
+                        "ETH/USDT": {
+                            "amount": 1.0,
+                            "mean_price": 3292.5,
                             "pending_buy": 0.0,
                             "pending_sell": 0.0,
-                            "cost_eur": 65000.0,
-                            "value_eur": 65000.0,
+                            "estimated_cost_usd": 3292.5,
+                            "estimated_value_usd": 3292.5,
                             "orders": [
                                 {
-                                    "order_id": "buy-20250112-195220",
-                                    "pair": "BTC/USDT",
+                                    "order_id": "buy-20250112-202438",
+                                    "pair": "ETH/USDT",
                                     "order_type": "Market Buy",
                                     "status": "Filled",
-                                    "last_filled": "2025-01-12T19:52:20.642813",
+                                    "last_filled": "2025-01-12T20:24:38.986276",
                                     "amount": 1.0,
-                                    "execution_price": 65000.0,
-                                    "subtotal": 65000.0,
-                                    "fee": 65.0,
-                                    "total": 65064.99999999999
+                                    "execution_price": 3292.5,
+                                    "subtotal": 3292.5,
+                                    "fee": 1646.25,
+                                    "total": 4938.75
+                                }
+                            ]
+                        },
+                        "BTC/USDT": {
+                            "amount": 0.5,
+                            "mean_price": 70000,
+                            "pending_buy": 0.0,
+                            "pending_sell": 0.0,
+                            "estimated_cost_usd": 35000.0,
+                            "estimated_value_usd": 35000.0,
+                            "orders": [
+                                {
+                                    "order_id": "sell-20250112-202525",
+                                    "pair": "BTC/USDT",
+                                    "order_type": "Market Sell",
+                                    "status": "Filled",
+                                    "last_filled": "2025-01-12T20:25:25.795846",
+                                    "amount": 0.5,
+                                    "execution_price": 70000,
+                                    "subtotal": 35000.0,
+                                    "fee": 17500.0,
+                                    "total": 52500.0
                                 }
                             ]
                         }
