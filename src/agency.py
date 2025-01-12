@@ -5,7 +5,7 @@ from crewai import Crew, Task, LLM
 from src.agents.receptionist import ReceptionistAgent
 from src.agents.portfolio_manager import PortfolioManagerAgent
 from flows.receptionist_flow import ReceptionistFlow
-from src.config.models.action import Action
+from src.config.models.portfolio import Action
 
 class CryptoAgency:
     """AI Crypto Trading Agency using crewai"""
@@ -49,6 +49,7 @@ class CryptoAgency:
         # kickoff workflow
         #self.receptionnist_flow()
         
-        self.portfolio_manager.show_portfolio()
-        self.portfolio_manager.add_transaction("virtual","virtual-1","BTC/USDT",0.5,70000,Action.SELL)
+        self.portfolio_manager.add_transaction("virtual","virtual-1","BTC/USDT",0.5,72000,Action.BUY)
+        #self.portfolio_manager.add_transaction("virtual","virtual-1","BTC/USDT",0.1,80000,Action.SELL) 
+        #self.portfolio_manager.delete_transaction("virtual","virtual-1","sell-20250112-202525")
         self.portfolio_manager.show_portfolio()

@@ -19,7 +19,7 @@ class OrderDetails:
     amount: float
     execution_price: float
     status: str = 'Filled'
-    last_filled: datetime = field(default_factory=datetime.now)
+    last_filled: str = field(default_factory=lambda: datetime.now().strftime('%Y-%m-%dT%H:%M:%S'))
     fee: float = 0.0
     subtotal: float = 0.0
     total: float = 0.0
@@ -64,7 +64,7 @@ class Account:
                             'pair': order.pair,
                             'order_type': order.order_type,
                             'status': order.status,
-                            'last_filled': order.last_filled.isoformat(),
+                            'last_filled': order.last_filled,
                             'amount': order.amount,
                             'execution_price': order.execution_price,
                             'subtotal': order.subtotal,
@@ -134,7 +134,7 @@ class Portfolio:
                             pair=order_data['pair'],
                             order_type=order_data['order_type'],
                             status=order_data['status'],
-                            last_filled=datetime.fromisoformat(order_data['last_filled']),
+                            last_filled=order_data['last_filled'],
                             amount=order_data['amount'],
                             execution_price=order_data['execution_price'],
                             subtotal=order_data['subtotal'],

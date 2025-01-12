@@ -1,5 +1,4 @@
 from typing import Dict, Optional
-from pydantic import Field, ConfigDict
 from rich.console import Console
 from rich.table import Table
 from datetime import datetime
@@ -29,7 +28,7 @@ class PortfolioPrinter:
         total_portfolio_value = 0
         
         for exchange_name, exchange in portfolio['exchanges'].items():
-            self.console.print(f"\n[bold]{exchange_name}[/]")
+            self.console.print(f"[bold]{exchange_name}[/]")
             
             for account_id, account in exchange['accounts'].items():
                 account_value = 0
@@ -186,80 +185,72 @@ class PortfolioManagerAgent:
         self.printer.print_orders(portfolio_dict, exchange, account, order_id)
 
     def add_transaction(self, exchange: str, account_id: str, symbol: str, 
-                    amount: float, price: float, action: Action, fee_rate: float = 0.5) -> None:
-        """
-        Add a new transaction to a specific account in an exchange
-        
-        Args:
-            exchange (str): Exchange name
-            account_id (str): Account identifier
-            symbol (str): Trading pair symbol
-            amount (float): Transaction amount
-            price (float): Execution price
-            action (Action): BUY or SELL action
-            fee_rate (float, optional): Fee rate as decimal. Defaults to 0.5 (0.5%)
-        """
+                   amount: float, price: float, action: Action, fee_rate: float = 0.5) -> None:
+        """Add a new transaction to a specific account in an exchange"""
         if exchange not in self.portfolio.exchanges or \
            account_id not in self.portfolio.exchanges[exchange].accounts:
             raise ValueError(f"Invalid exchange or account: {exchange}/{account_id}")
 
         account = self.portfolio.exchanges[exchange].accounts[account_id]
         
-        # Calculate transaction values
-        subtotal = amount * price
-        fee = subtotal * fee_rate
-        total = subtotal + fee
+        # Calculate transaction values using Decimal from the start
+        amount_d = amount
+        price_d = price
+        subtotal_d = amount_d * price_d
+        fee_d = subtotal_d * (fee_rate / float('100'))
+        total_d = subtotal_d + fee_d
         
         # Create the order details
         order = OrderDetails(
             order_id=f"{action.value.lower()}-{datetime.now().strftime('%Y%m%d-%H%M%S')}",
             pair=symbol,
             order_type=f"Market {action.value.title()}",
-            amount=amount,
-            execution_price=price,
-            subtotal=subtotal,
-            fee=fee,  # Using calculated fee
-            total=total  # Using calculated total
+            amount=float(amount_d),
+            execution_price=float(price_d),
+            subtotal=float(subtotal_d),
+            fee=float(fee_d),
+            total=float(total_d),
+            last_filled=datetime.now().strftime('%Y-%m-%d %H:%M:%S')
         )
+        if action.value == Action.SELL:
+            if symbol not in account.positions:
+                raise ValueError(f"Cannot SELL {symbol}: no position exists")
+            current_amount = Decimal(str(account.positions[symbol].amount))
+            if amount_d > current_amount:
+                raise ValueError(f"Cannot SELL {amount} {symbol}: only {float(current_amount)} available")
 
         # Handle position creation or update
         if symbol not in account.positions:
-            # Create new position
-            position = Position(
-                amount=amount,
-                mean_price=price,
-                estimated_cost_usd=amount * price,  # Changed from cost_eur
-                estimated_value_usd=amount * price,  # Changed from value_eur
+            # Create new position (only for BUY)
+            account.positions[symbol] = Position(
+                amount=float(amount_d),
+                mean_price=float(price_d),
+                estimated_cost_usd=float(total_d),
+                estimated_value_usd=float(subtotal_d),
                 orders=[order]
             )
-            account.positions[symbol] = position
         else:
-            # Update existing position
             position = account.positions[symbol]
-            old_amount = position.amount
-            old_cost = old_amount * position.mean_price
-
-            if action == Action.BUY:
-                # Update amount and recalculate mean price for buys
-                new_amount = old_amount + amount
-                new_cost = old_cost + (amount * price)
-                position.amount = new_amount
-                position.mean_price = new_cost / new_amount if new_amount > 0 else price
-            else:  # SELL
-                # Update amount for sells
-                position.amount = max(0.0, old_amount - amount)
+            current_amount = float(position.amount)
+            current_cost = float(position.estimated_cost_usd)
+            
+            if action is Action.BUY: 
+                new_amount = float(current_amount) + float(amount_d)
+                new_cost = float(current_cost) + float(total_d)
                 
-            # Update position value
-            position.estimated_value_usd = position.amount * price  # Changed from value_eur
-            
-            # Append the order to the position's order history
-            position.orders.append(order)
-            
-            # Remove position if amount is 0
-            if position.amount == 0:
-                del account.positions[symbol]
+                position.amount = float(new_amount)
+                position.mean_price = float(new_cost / new_amount)
+                position.estimated_cost_usd = float(new_cost)
+                position.estimated_value_usd = float(new_amount * price_d)
+            else: 
+                new_amount = float(current_amount) - float(amount_d)
+                position.amount = float(new_amount)
+                position.estimated_cost_usd = float(new_amount * float(position.mean_price))
+                position.estimated_value_usd = float(new_amount * float(price_d))
 
-        # Save changes
+            position.orders.append(order)
+
+        # Save changes immediately
         self._save_portfolio()
         
         # Print confirmation
@@ -297,4 +288,59 @@ class PortfolioManagerAgent:
             
             # Save the updated portfolio
             self._save_portfolio()
-            print(f"[green]Virtual exchange initialized with account: {virtual_account.name}[/]")
+            
+            # Use rich console for colored output
+            self.printer.console.print(
+                f"[green]Virtual exchange initialized with account: {virtual_account.name}[/]"
+            )
+
+    def delete_transaction(self, exchange: str, account_id: str, order_id: str) -> None:
+        """
+        Delete a transaction from a specific account in an exchange
+        
+        Args:
+            exchange (str): Exchange name
+            account_id (str): Account identifier
+            order_id (str): Order ID to delete
+        
+        Raises:
+            ValueError: If exchange, account or order not found
+        """
+        # Validate exchange and account exist
+        if exchange not in self.portfolio.exchanges or \
+           account_id not in self.portfolio.exchanges[exchange].accounts:
+            raise ValueError(f"Invalid exchange or account: {exchange}/{account_id}")
+
+        account = self.portfolio.exchanges[exchange].accounts[account_id]
+        order_found = False
+        
+        # Search through all positions for the order
+        for symbol, position in list(account.positions.items()):
+            for order in list(position.orders):
+                if order.order_id == order_id:
+                    order_found = True
+                    # Remove the order
+                    position.orders.remove(order)
+                    
+                    # Recalculate position after removing order
+                    if "Buy" in order.order_type:
+                        position.amount -= order.amount
+                    else:  # Sell
+                        position.amount += order.amount
+                    
+                    # Update position values
+                    if position.amount > 0:
+                        position.estimated_value_usd = position.amount * position.mean_price
+                    else:
+                        # Remove position if no amount left
+                        del account.positions[symbol]
+                    
+                    # Save changes
+                    self._save_portfolio()
+                    
+                    # Use printer for output
+                    self.printer.print_transaction_deleted(order_id, exchange, account.name)
+                    return
+
+        if not order_found:
+            raise ValueError(f"Order {order_id} not found in {exchange}/{account_id}")
