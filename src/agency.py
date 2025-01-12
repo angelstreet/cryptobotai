@@ -11,6 +11,7 @@ class CryptoAgency:
     
     def __init__(self, config): 
         self.config = config
+        self.config.debug = config.debug
         llm = self._init_llm()
         self.config.llm = llm
     

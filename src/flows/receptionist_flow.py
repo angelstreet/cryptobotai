@@ -1,7 +1,7 @@
 # flows/receptionist_flow.py
 from typing import List, Dict, Any
 from crewai import Flow, Agent
-from src.agents.receptionist import ReceptionistAgent, WelcomeHandler, UserInputHandler, RouteCommandHandler, HelpHandler
+from src.agents.receptionist import ReceptionistAgent
 
 class ReceptionistFlow(Flow):
     """Flow for handling welcome and user guidance"""
@@ -10,37 +10,24 @@ class ReceptionistFlow(Flow):
         self.config = config
         self.receptionist = receptionist
         self.portfolio_manager = portfolio_manager
-        self.welcome_handler = WelcomeHandler()
-        self.input_handler = UserInputHandler()
-        self.route_command_handler = RouteCommandHandler(self.config)
-        self.help_handler = HelpHandler()
         super().__init__()
 
-    def get_agents(self) -> List[Agent]:
-        """Define the agents used in this flow"""
-        return [self.receptionist, self.portfolio_manager]
-
-    def route_command(self, command: str) -> None:
+    def route_command(self, cmd: str) -> None:
         """Route the command to the appropriate task or flow"""
-        if command == 'show_portfolio':
+        if cmd == 'show_portfolio':
             self.portfolio_manager.show_portfolio()
-        elif command == 'help':
-            self.help_handler.run()
+        elif cmd == 'help':
+            self.receptionist.print_helper()
+
 
     def kickoff(self) -> Dict[str, Any]:
         """Run the receptionist flow with direct handler execution."""
- 
-        if self.config.command != 'welcome':
-            command_result = self.route_command_handler.run()
-            command = command_result.get('command')
-            self.route_command(command)
-        else:
-            self.welcome_handler.run()
-            self.help_handler.run()
-
+        self.receptionist.print_welcome()
+        self.receptionist.print_helper()  
         while True:  
-            command_result = self.input_handler.run()
-            command = command_result.get('command')
-            self.route_command(command)
-            if command == 'exit':
+            user_input = self.receptionist.get_user_input()
+            if user_input == 'exit':
                 break
+            self.route_command(user_input)
+            
+            

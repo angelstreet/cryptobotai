@@ -73,7 +73,6 @@ class PortfolioManagerAgent(Agent):
             })
         
         # Print portfolio details
-        print("\n=== Portfolio Overview ===")
         print(f"Total Portfolio Value: ${portfolio_details['total_value']:,.2f}")
         print("\nAsset Breakdown:")
         for asset in portfolio_details['assets']:

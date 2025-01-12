@@ -10,11 +10,6 @@ from src.agency import CryptoAgency
 def main():
     parser = argparse.ArgumentParser(description="AI Crypto Agency")
     parser.add_argument('-d', '--debug', action='store_true', help=argparse.SUPPRESS)
-    parser.add_argument('command', 
-                       nargs='?', 
-                       default='welcome',   
-                       choices=['welcome', 'show_portfolio', 'trade', 'backtest', 'virtual', 'help'],
-                       help=argparse.SUPPRESS)
     config = parser.parse_args()    
     agency = CryptoAgency(config)
     agency.start()
