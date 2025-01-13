@@ -1,6 +1,4 @@
 from typing import Dict, Any
-from datetime import datetime
-from src.config.models.action import Action
 
 def get_mock_market_data(exchange: str = 'binance', symbol: str = 'BTC/USDT') -> Dict[str, Any]:
     """Return mock market data based on real historical data"""

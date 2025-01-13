@@ -4,6 +4,7 @@ from dotenv import load_dotenv
 from crewai import Crew, Task, LLM
 from src.agents.receptionist import ReceptionistAgent
 from src.agents.portfolio_manager import PortfolioManagerAgent
+from src.agents.data_analyst import DataAnalystAgent
 from flows.receptionist_flow import ReceptionistFlow
 from src.config.models.portfolio import Action
 
@@ -46,11 +47,13 @@ class CryptoAgency:
         # Initialize agents
         self.receptionist = ReceptionistAgent(config=self.config)
         self.portfolio_manager = PortfolioManagerAgent(config=self.config)
+        self.data_analyst = DataAnalystAgent(config=self.config)
         # kickoff workflow
         #self.receptionnist_flow()
         
         #self.portfolio_manager.add_transaction("virtual","virtual-1","ETH/USDT",1,3276.46,Action.BUY)
         #self.portfolio_manager.add_transaction("virtual","virtual-1","BTC/USDT",0.1,80000,Action.SELL) 
         #self.portfolio_manager.delete_transaction("virtual","virtual-1","sell-20250112-202525")
-        self.portfolio_manager.show_portfolio()
-        self.portfolio_manager.show_orders()
+        #self.portfolio_manager.show_portfolio()
+        #self.portfolio_manager.show_orders()
+        print(self.data_analyst.fetch_market_data("coinbase","BTC-USD",mock=True))
