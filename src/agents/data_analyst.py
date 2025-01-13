@@ -29,15 +29,18 @@ class DataAnalystAgent(Agent):
 
     def _fetch_currency_rates(self) -> Dict[str, Any]:
         """Fetch currency rates"""
-        c = CurrencyRates()
-        # Get the EUR/USD exchange rate
-        eur_usd_rate = c.get_rate('EUR', 'USD')
-        print(f"EUR/USD: {eur_usd_rate}")
-
-        # Get the USD/EUR exchange rate
-        usd_eur_rate = c.get_rate('USD', 'EUR')
-        print(f"USD/EUR: {usd_eur_rate}")
+        # Using exchangerate-api.com's free endpoint
+        url = "https://api.exchangerate-api.com/v4/latest/EUR"
+        response = requests.get(url)
+        response.raise_for_status()  # Raise an exception for bad status codes
         
+        data = response.json()
+        eur_usd_rate = data['rates']['USD']
+        usd_eur_rate = 1 / eur_usd_rate  # Calculate inverse rate
+        
+        print(f"EUR/USD: {eur_usd_rate:.4f}")
+        print(f"USD/EUR: {usd_eur_rate:.4f}")
+
         self._currency_rates: Dict[str, float] = {
             'EUR/USD': eur_usd_rate,
             'USD/EUR': usd_eur_rate
