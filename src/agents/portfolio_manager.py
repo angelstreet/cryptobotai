@@ -75,6 +75,7 @@ class PortfolioPrinter:
         table.add_column("Total", justify="right", style="dim")
         
         currency = portfolio.get('display_currency', '$')
+        all_orders = []  # New list to collect all orders
         
         for exch_name, exch_data in portfolio['exchanges'].items():
             if exchange and exchange != exch_name:
@@ -88,21 +89,33 @@ class PortfolioPrinter:
                     for order in pos['orders']:
                         if order_id and order['order_id'] != order_id:
                             continue
-                            
-                        order_style = "green" if "Buy" in order['order_type'] else "red"
-                        
-                        table.add_row(
-                            exch_name,
-                            acc_data['name'],
-                            order['pair'],
-                            f"[{order_style}]{order['order_type']}[/]",
-                            order['last_filled'],
-                            f"{order['amount']:.8f}",
-                            f"{currency}{order['execution_price']:,.2f}",
-                            f"{currency}{order['subtotal']:,.2f}",
-                            f"{currency}{order['fee']:,.2f}",
-                            f"{currency}{order['total']:,.2f}"
-                        )
+                        # Collect order info with exchange and account details
+                        all_orders.append({
+                            'exchange': exch_name,
+                            'account': acc_data['name'],
+                            'order': order
+                        })
+        
+        # Sort orders by date (newest first)
+        all_orders.sort(key=lambda x: x['order']['last_filled'], reverse=True)
+        
+        # Add sorted orders to table
+        for order_info in all_orders:
+            order = order_info['order']
+            order_style = "green" if "Buy" in order['order_type'] else "red"
+            
+            table.add_row(
+                order_info['exchange'],
+                order_info['account'],
+                order['pair'],
+                f"[{order_style}]{order['order_type']}[/]",
+                order['last_filled'],
+                f"{order['amount']:.8f}",
+                f"{currency}{order['execution_price']:,.2f}",
+                f"{currency}{order['subtotal']:,.2f}",
+                f"{currency}{order['fee']:,.2f}",
+                f"{currency}{order['total']:,.2f}"
+            )
         
         self.console.print("\n[dim]─── Orders Overview ───[/]")
         self.console.print(table)
