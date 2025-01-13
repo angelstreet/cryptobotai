@@ -220,18 +220,18 @@ class PortfolioManagerAgent:
         if action.value == Action.SELL:
             if symbol not in account.positions:
                 raise ValueError(f"Cannot SELL {symbol}: no position exists")
-            current_amount = Decimal(str(account.positions[symbol].amount))
-            if amount_d > current_amount:
+            current_amount = account.positions[symbol].amount
+            if amount > current_amount:
                 raise ValueError(f"Cannot SELL {amount} {symbol}: only {float(current_amount)} available")
 
         # Handle position creation or update
         if symbol not in account.positions:
             # Create new position (only for BUY)
             account.positions[symbol] = Position(
-                amount=float(amount_d),
-                mean_price=float(price_d),
-                estimated_cost_usd=float(total_d),
-                estimated_value_usd=float(subtotal_d),
+                amount=float(amount),
+                mean_price=float(price),
+                estimated_cost_usd=float(total),
+                estimated_value_usd=float(subtotal),
                 orders=[order]
             )
         else:
@@ -240,18 +240,18 @@ class PortfolioManagerAgent:
             current_cost = float(position.estimated_cost_usd)
             
             if action is Action.BUY: 
-                new_amount = float(current_amount) + float(amount_d)
-                new_cost = float(current_cost) + float(total_d)
+                new_amount = float(current_amount) + float(amount)
+                new_cost = float(current_cost) + float(total)
                 
                 position.amount = float(new_amount)
                 position.mean_price = float(new_cost / new_amount)
                 position.estimated_cost_usd = float(new_cost)
-                position.estimated_value_usd = float(new_amount * price_d)
+                position.estimated_value_usd = float(new_amount * price)
             else: 
-                new_amount = float(current_amount) - float(amount_d)
+                new_amount = float(current_amount) - float(amount)
                 position.amount = float(new_amount)
                 position.estimated_cost_usd = float(new_amount * float(position.mean_price))
-                position.estimated_value_usd = float(new_amount * float(price_d))
+                position.estimated_value_usd = float(new_amount * float(price))
 
             position.orders.append(order)
 
