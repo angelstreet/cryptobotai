@@ -1,4 +1,4 @@
-from typing import Dict, Any, Set, Optional
+from typing import Dict, Any, Set, Optional, List
 import requests
 from datetime import datetime, timedelta
 from enum import Enum
@@ -41,47 +41,49 @@ class DataAnalystAgent(Agent):
     def currency_rates(self) -> Dict[str, float]:
         return self._currency_rates
 
-    def _get_coingecko_price(self, crypto_id: str, currency: str = "usd") -> Dict[str, Any]:
-        """Fetch current price data from CoinGecko"""
+    def _get_coingecko_price(self, crypto_ids: List[str], currency: str = "usd") -> Dict[str, Any]:
+        """Fetch current price data from CoinGecko for a list of cryptocurrency IDs."""
         try:
             url = f"{COINGECKO_BASE_URL}/simple/price"
             params = {
-                "ids": crypto_id,
+                "ids": ",".join(crypto_ids),  # Convert list to comma-separated string
                 "vs_currencies": currency,
-                "include_24hr_change": "true",  
-                "include_24hr_vol": "true",     
-                "include_last_updated_at": "true"  
+                "include_24hr_change": "true",
+                "include_24hr_vol": "true",
+                "include_last_updated_at": "true"
             }
             
             response = requests.get(url, params=params)
             response.raise_for_status()
             data = response.json()
             
-            # Get the currency data safely with defaults
-            currency_data = data.get(crypto_id, {})
-            price = float(currency_data.get(currency, 0))
-            market_cap = float(currency_data.get(f"{currency}_market_cap", 0))
-            volume_24h = float(currency_data.get(f"{currency}_24h_vol", 0))
-            change_24h = float(currency_data.get(f"{currency}_24h_change", 0))
-            last_updated_at = currency_data.get("last_updated_at", None)
+            results = {}
+            for crypto_id in crypto_ids:
+                currency_data = data.get(crypto_id, {})
+                price = float(currency_data.get(currency, 0))
+                market_cap = float(currency_data.get(f"{currency}_market_cap", 0))
+                volume_24h = float(currency_data.get(f"{currency}_24h_vol", 0))
+                change_24h = float(currency_data.get(f"{currency}_24h_change", 0))
+                last_updated_at = currency_data.get("last_updated_at", None)
+                
+                # Convert last_updated_at timestamp to a readable format
+                if last_updated_at:
+                    last_updated_at = datetime.fromtimestamp(last_updated_at).strftime('%Y-%m-%d %H:%M:%S')
+                else:
+                    last_updated_at = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+                
+                results[crypto_id] = {
+                    'price': price,
+                    'market_cap': market_cap,
+                    'volume_24h': volume_24h,
+                    'change_24h': change_24h,
+                    'last_updated': last_updated_at,
+                    'exchange': Exchange.COINGECKO.value,
+                    'symbol': f"{crypto_id}/{currency}"
+                }
             
-            # Convert last_updated_at timestamp to a readable format
-            if last_updated_at:
-                last_updated_at = datetime.fromtimestamp(last_updated_at).strftime('%Y-%m-%d %H:%M:%S')
-            else:
-                last_updated_at = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-            
-            print(currency_data)  # Debugging: Print the raw currency data
-            
-            return {
-                'price': price,
-                'market_cap': market_cap,
-                'volume_24h': volume_24h,
-                'change_24h': change_24h,
-                'last_updated': last_updated_at,
-                'exchange': Exchange.COINGECKO.value,
-                'symbol': f"{crypto_id}/{currency}"
-            }
+            print(data)  # Debugging: Print the raw API response
+            return results
         except Exception as e:
             print(f"Error fetching CoinGecko price: {e}")
             return None
