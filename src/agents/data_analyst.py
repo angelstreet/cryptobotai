@@ -1,12 +1,26 @@
-from typing import Dict, Any, Set
+from typing import Dict, Any, Set, Optional
 import requests
-from .agent import Agent
-from forex_python.converter import CurrencyRates
+from datetime import datetime, timedelta
 from enum import Enum
+from pydantic import BaseModel, Field
+from .agent import Agent
+COINGECKO_BASE_URL = "https://api.coingecko.com/api/v3"
+
+class CoinGeckoIds(Enum):
+    BTC = "bitcoin"
+    ETH = "ethereum"
+    SOL = "solana"
+    XRP = "xrp"
+    DOGE = "dogecoin"
 
 class Exchange(Enum):
-    BINANCE = "binance"
-    COINBASE = "coinbase"
+    COINGECKO = "coingecko"
+
+class TimeFrame(Enum):
+    WEEK = "7d"
+    MONTH = "30d"
+    YEAR = "365d"
+    YTD = "ytd"
 
 class DataAnalystAgent(Agent):
     def __init__(self, config):
@@ -14,7 +28,7 @@ class DataAnalystAgent(Agent):
         self._watched_symbols: Set[str] = set()
         self._estimated_prices: Dict[str, float] = {}
         self._currency_rates: Dict[str, float] = {}
-        
+
     @property
     def watched_symbols(self) -> Set[str]:
         return self._watched_symbols
@@ -27,112 +41,214 @@ class DataAnalystAgent(Agent):
     def currency_rates(self) -> Dict[str, float]:
         return self._currency_rates
 
-    def _fetch_currency_rates(self) -> Dict[str, Any]:
-        """Fetch currency rates"""
-        # Using exchangerate-api.com's free endpoint
-        url = "https://api.exchangerate-api.com/v4/latest/EUR"
-        response = requests.get(url)
-        response.raise_for_status()  # Raise an exception for bad status codes
-        
-        data = response.json()
-        eur_usd_rate = data['rates']['USD']
-        usd_eur_rate = 1 / eur_usd_rate  # Calculate inverse rate
-        
-        print(f"EUR/USD: {eur_usd_rate:.4f}")
-        print(f"USD/EUR: {usd_eur_rate:.4f}")
+    def _get_coingecko_price(self, crypto_id: str, currency: str = "usd") -> Dict[str, Any]:
+        """Fetch current price data from CoinGecko"""
+        try:
+            url = f"{COINGECKO_BASE_URL}/simple/price"
+            params = {
+                "ids": crypto_id,
+                "vs_currencies": currency,
+                "include_24hr_change": "true",  
+                "include_24hr_vol": "true",     
+                "include_last_updated_at": "true"  
+            }
+            
+            response = requests.get(url, params=params)
+            response.raise_for_status()
+            data = response.json()
+            
+            # Get the currency data safely with defaults
+            currency_data = data.get(crypto_id, {})
+            price = float(currency_data.get(currency, 0))
+            market_cap = float(currency_data.get(f"{currency}_market_cap", 0))
+            volume_24h = float(currency_data.get(f"{currency}_24h_vol", 0))
+            change_24h = float(currency_data.get(f"{currency}_24h_change", 0))
+            last_updated_at = currency_data.get("last_updated_at", None)
+            
+            # Convert last_updated_at timestamp to a readable format
+            if last_updated_at:
+                last_updated_at = datetime.fromtimestamp(last_updated_at).strftime('%Y-%m-%d %H:%M:%S')
+            else:
+                last_updated_at = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+            
+            print(currency_data)  # Debugging: Print the raw currency data
+            
+            return {
+                'price': price,
+                'market_cap': market_cap,
+                'volume_24h': volume_24h,
+                'change_24h': change_24h,
+                'last_updated': last_updated_at,
+                'exchange': Exchange.COINGECKO.value,
+                'symbol': f"{crypto_id}/{currency}"
+            }
+        except Exception as e:
+            print(f"Error fetching CoinGecko price: {e}")
+            return None
 
-        self._currency_rates: Dict[str, float] = {
-            'EUR/USD': eur_usd_rate,
-            'USD/EUR': usd_eur_rate
+    def get_historical_data(self, crypto_id: str, timeframe: TimeFrame, currency: str = "usd") -> Dict[str, Any]:
+        """
+        Fetch historical price data from CoinGecko
+        
+        Args:
+            crypto_id: The cryptocurrency ID (e.g., 'bitcoin')
+            timeframe: TimeFrame enum value (7d, 30d, 365d, ytd)
+            currency: The currency to get prices in (e.g., 'usd', 'eur')
+            
+        Returns:
+            Dictionary containing historical price data with formatted dates
+        """
+        try:
+            end_date = datetime.now()
+            
+            if timeframe == TimeFrame.YTD:
+                start_date = datetime(end_date.year, 1, 1)
+            else:
+                days = int(timeframe.value.replace('d', ''))
+                start_date = end_date - timedelta(days=days)
+            
+            url = f"{COINGECKO_BASE_URL}/coins/{crypto_id}/market_chart/range"
+            params = {
+                "vs_currency": currency.lower(),
+                "from": int(start_date.timestamp()),
+                "to": int(end_date.timestamp())
+            }
+            
+            response = requests.get(url, params=params)
+            response.raise_for_status()
+            data = response.json()
+            
+            # Format the timestamp data
+            formatted_data = {
+                'prices': [
+                    {
+                        'date': datetime.fromtimestamp(ts / 1000).strftime('%Y-%m-%d'),
+                        'time': datetime.fromtimestamp(ts / 1000).strftime('%H:%M:%S'),
+                        'value': value
+                    }
+                    for ts, value in data['prices']
+                ],
+                'market_caps': [
+                    {
+                        'date': datetime.fromtimestamp(ts / 1000).strftime('%Y-%m-%d'),
+                        'value': value
+                    }
+                    for ts, value in data['market_caps']
+                ],
+                'total_volumes': [
+                    {
+                        'date': datetime.fromtimestamp(ts / 1000).strftime('%Y-%m-%d'),
+                        'value': value
+                    }
+                    for ts, value in data['total_volumes']
+                ],
+                'metadata': {
+                    'timeframe': timeframe.value,
+                    'symbol': f"{crypto_id}/{currency.lower()}",
+                    'start_date': start_date.strftime('%Y-%m-%d'),
+                    'end_date': end_date.strftime('%Y-%m-%d'),
+                    'currency': currency.lower()
+                }
+            }
+            
+            return formatted_data
+            
+        except Exception as e:
+            print(f"Error fetching historical data: {e}")
+            return None
+
+    def _get_coingecko_market_data(self, crypto_id: str, currency: str = "usd") -> Dict[str, Any]:
+        """Fetch detailed market data from CoinGecko"""
+        try:
+            url = f"{COINGECKO_BASE_URL}/coins/{crypto_id}"
+            params = {
+                "localization": "false",
+                "tickers": "false",
+                "community_data": "false",
+                "developer_data": "false",
+                "sparkline": "false"
+            }
+            
+            response = requests.get(url, params=params)
+            response.raise_for_status()
+            data = response.json()
+            
+            market_data = data.get('market_data', {})
+            
+            return {
+                'price': float(market_data.get('current_price', {}).get(currency, 0)),
+                'market_cap': float(market_data.get('market_cap', {}).get(currency, 0)),
+                'total_volume': float(market_data.get('total_volume', {}).get(currency, 0)),
+                'high_24h': float(market_data.get('high_24h', {}).get(currency, 0)),
+                'low_24h': float(market_data.get('low_24h', {}).get(currency, 0)),
+                'price_change_24h': float(market_data.get('price_change_24h', 0)),
+                'price_change_percentage_24h': float(market_data.get('price_change_percentage_24h', 0)),
+                'market_cap_change_24h': float(market_data.get('market_cap_change_24h', 0)),
+                'market_cap_change_percentage_24h': float(market_data.get('market_cap_change_percentage_24h', 0)),
+                'circulating_supply': float(market_data.get('circulating_supply', 0)),
+                'total_supply': float(market_data.get('total_supply', 0)),
+                'max_supply': float(market_data.get('max_supply', 0)),
+                'last_updated': market_data.get('last_updated', datetime.now().strftime('%Y-%m-%d %H:%M:%S')),
+                'exchange': Exchange.COINGECKO.value,
+                'symbol': f"{crypto_id}/{currency}"
+            }
+        except Exception as e:
+            print(f"Error fetching CoinGecko market data: {e}")
+            return None
+
+    def fetch_market_data(self, crypto_id: str, currency: str = "usd", 
+                         timeframe: Optional[TimeFrame] = None) -> Dict[str, Any]:
+        """
+        Fetch market data including current price and optional historical data
+        
+        Args:
+            crypto_id: The cryptocurrency ID (e.g., 'bitcoin')
+            currency: The currency to get prices in (e.g., 'usd', 'eur')
+            timeframe: Optional TimeFrame enum value for historical data
+        """
+        self._watched_symbols.add(f"{crypto_id}/{currency.lower()}")
+        
+        # Get detailed market data
+        market_data = self._get_coingecko_market_data(crypto_id, currency.lower())
+        if not market_data:
+            return None
+            
+        # If timeframe is specified, add historical data
+        if timeframe:
+            historical_data = self.get_historical_data(crypto_id, timeframe, currency.lower())
+            if historical_data:
+                market_data['historical'] = historical_data
+        
+        # Add metadata
+        market_data['metadata'] = {
+            'currency': currency.lower(),
+            'crypto_id': crypto_id,
+            'timestamp': datetime.now().strftime('%Y-%m-%d %H:%M:%S')
         }
-
-    def _get_binance_price(self, symbol: str) -> Dict[str, Any]:
-        """Fetch price data from Binance"""
-        try:
-            url = f"https://api.binance.com/api/v3/ticker/price?symbol={symbol}"
-            response = requests.get(url)
-            response.raise_for_status()
-            data = response.json()
-            return {
-                'price': float(data['price']),
-                'exchange': Exchange.BINANCE.value,
-                'symbol': symbol
-            }
-        except Exception as e:
-            print(f"Error fetching Binance price: {e}")
-            return None
-
-    def _get_coinbase_price(self, crypto_id: str, currency: str) -> Dict[str, Any]:
-        """Fetch price data from Coinbase"""
-        try:
-            url = f"https://api.coinbase.com/v2/prices/{crypto_id}-{currency}/spot"
-            response = requests.get(url)
-            response.raise_for_status()
-            data = response.json()
-            return {
-                'price': float(data['data']['amount']),
-                'exchange': Exchange.COINBASE.value,
-                'symbol': f"{crypto_id}-{currency}"
-            }
-        except Exception as e:
-            print(f"Error fetching Coinbase price: {e}")
-            return None
-
-    def fetch_market_data(self, exchange: str, symbol: str, mock: bool = False) -> Dict[str, Any]:
-        """Fetch market data including currency rates"""
-        self._watched_symbols.add(symbol)
-        self._fetch_currency_rates()
-
-        if mock:
-            return self._fetch_mock_market_data(exchange, symbol)
-        elif exchange == "binance":
-            # Fetch from Binance
-            market_data = self._fetch_real_market_data(exchange, "BTCUSDT")
-        elif exchange == "coinbase":
-            # Fetch from Coinbase
-            market_data = self._fetch_real_market_data(exchange, "BTC-USD")
-        else:
-            raise ValueError(f"Unsupported exchange: {exchange}")
-        market_data['currency_rates'] = self._currency_rates
+        
         return market_data
 
-    def _fetch_real_market_data(self, exchange: str, symbol: str) -> Dict[str, Any]:
-        """Fetch real market data from specified exchange"""
-        exchange_lower = exchange.lower()
-        
-        if exchange_lower == Exchange.BINANCE.value:
-            # For Binance, we expect symbols like 'BTCUSDT'
-            data = self._get_binance_price(symbol)
-        elif exchange_lower == Exchange.COINBASE.value:
-            # For Coinbase, we need to split the symbol (e.g., 'BTC-USD' -> 'BTC', 'USD')
-            crypto_id, currency = symbol.split('-')
-            data = self._get_coinbase_price(crypto_id, currency)
-        else:
-            raise ValueError(f"Unsupported exchange: {exchange}")
-
-        if data is None:
-            raise Exception(f"Failed to fetch data from {exchange} for {symbol}")
-
-        return data
-
-    def _fetch_mock_market_data(self, exchange: str = 'binance', symbol: str = 'BTCUSDT') -> Dict[str, Any]:
-        """Return mock market data based on real historical data"""
-        return {
-            'price': 65000.0,
-            'volume': 1250.75,
-            'change_24h': 0.3,
-            'high_low_range': 2.1,
-            'exchange': exchange,
-            'symbol': symbol,
-            'reasoning': """Given the current price and volume data, it appears that there is no recent trading activity or trend. 
-            However, if we look at the Trading Parameters, the Base Threshold of 0.3% and Required Change of 0.3% suggest a potential 
-            for price movement in the near future. With a stop loss of 2.0% and take profit targets set at +2.0% and +5.0%, the 
-            risk-reward ratio seems favorable."""
-        }
-
-    def get_currency_rate(self, from_currency: str, to_currency: str) -> float:
-        """Get currency conversion rate"""
-        if from_currency == to_currency:
-            return 1.0
-        rate_key = f"{from_currency}/{to_currency}"
-        return self._currency_rates.get(rate_key, 1.0)
+    def _fetch_currency_rates(self) -> Dict[str, Any]:
+        """Fetch currency rates from CoinGecko"""
+        try:
+            url = f"{COINGECKO_BASE_URL}/exchange_rates"
+            response = requests.get(url)
+            response.raise_for_status()
+            data = response.json()
+            
+            eur_usd_rate = data['rates']['usd']['value'] / data['rates']['eur']['value']
+            usd_eur_rate = 1 / eur_usd_rate
+            
+            self._currency_rates = {
+                'EUR/USD': eur_usd_rate,
+                'USD/EUR': usd_eur_rate
+            }
+            
+            return self._currency_rates
+            
+        except Exception as e:
+            print(f"Error fetching currency rates: {e}")
+            return {
+                'EUR/USD': 1.08,
+                'USD/EUR': 0.926
+            }

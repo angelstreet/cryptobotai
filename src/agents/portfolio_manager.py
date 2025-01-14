@@ -4,11 +4,17 @@ from rich.table import Table
 from datetime import datetime
 from pathlib import Path
 import json
+from enum import Enum
 
 from src.config.models.portfolio import (
     Portfolio, Position, OrderDetails, Exchange, 
     Account, AccountType, Action
 )
+
+class Action(Enum):
+    BUY = "buy"
+    SELL = "sell"
+    SPOT = "spot"
 
 class PortfolioPrinter:
     def __init__(self, console: Console):
