@@ -7,7 +7,8 @@ from src.agents.portfolio_manager import PortfolioManagerAgent
 from src.agents.data_analyst import DataAnalystAgent
 from flows.receptionist_flow import ReceptionistFlow
 from src.config.models.portfolio import Action
-from src.agents.data_analyst import CoinGeckoIds
+from src.agents.data_analyst import BTC,ETH,TimeFrame
+
 class CryptoAgency:
     """AI Crypto Trading Agency using crewai"""
     
@@ -57,4 +58,8 @@ class CryptoAgency:
         #self.portfolio_manager.delete_transaction("virtual","virtual-1","sell-20250112-202525")
         #self.portfolio_manager.show_portfolio()
         #self.portfolio_manager.show_orders()
-        self.data_analyst._get_coingecko_price(["bitcoin","ethereum"])
+        #self.data_analyst.coingecko_get_price([BTC,ETH])
+        data = self.data_analyst.coingecko_get_historical_data(BTC,"USD",TimeFrame.DAY,)
+        #self.data_analyst.print_coingecko_historical_table(BTC,"USD",TimeFrame.DAY,data)
+        #self.data_analyst.print_coingecko_historical_chart(BTC,"USD",TimeFrame.DAY,data)
+        self.data_analyst.plot_plotext_chart(BTC,"USD",data)
