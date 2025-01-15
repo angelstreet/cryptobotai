@@ -3,8 +3,6 @@ from rich.theme import Theme
 from rich.table import Table
 from datetime import datetime
 from typing import Dict, Any
-import os
-
 # Define shared theme
 SHARED_THEME = Theme({
     "info": "cyan",
@@ -15,57 +13,90 @@ SHARED_THEME = Theme({
     "conservative": "blue",
     "default": "white"
 })
-
-# Create console instance
 console = Console(theme=SHARED_THEME)
 
-def print_debug_info(debug_str: str, decision: dict = None):
-    """Print debug information"""
-    console.print(debug_str)
-    if decision:
-        console.print(f"\n[bold]Decision:[/] {decision['action']} | "
-                     f"Size: {decision['amount']:.2f} | "
-                     f"Confidence: {decision['confidence']}%")
-        if decision.get('reasoning'):
-            console.print(f"[bold]Reasoning:[/] {decision['reasoning']}")
+def print_friendly_table(data: Dict[str, Any], title: str = "Data Overview"):
+    """
+    Print any dictionary in a friendly table format using rich, with dynamic formatting based on column titles.
 
-def print_header(symbol: str):
-    """Print bot header"""
-    console.print("=== Crypto AI Trading Bot ===", style="bold cyan")
-    console.print(f"Trading {symbol}", style="bold")
-
-def print_trading_analysis(debug_str: str, decision: dict):
-    """Print trading analysis and decision"""
-    console.print("\n[dim]─── Trading Analysis ───[/]")
-    console.print(debug_str)
-    console.print(f"\n[bold]Decision:[/] {decision['action']} | "
-                 f"Size: {decision['amount']:.2f} | "
-                 f"Confidence: {decision['confidence']}%")
-    if decision.get('reasoning'):
-        console.print(f"[bold]Reasoning:[/] {decision['reasoning']}")
-
-def print_chart(data, symbol: str):
-    """Print trading chart"""
-    # Create table
-    console.print("\n[dim]─── Trading Chart ───[/]")
-    table = Table(title=f"{symbol} Market Data")
-    table.add_column("Time", justify="left", style="cyan")
-    table.add_column("Price", justify="right")
-    table.add_column("Change", justify="right")
-    table.add_column("Volume", justify="right")
+    Args:
+        data (Dict[str, Any]): The dictionary to display.
+        title (str): The title of the table (default: "Data Overview").
+    """
+    console = Console()
     
-    # Add rows
-    for index, row in data.iterrows():
-        time = datetime.fromtimestamp(row['timestamp']/1000).strftime('%Y-%m-%d %H:%M')
-        price = f"${row['close']:,.2f}"
-        change = f"{((row['close'] - row['open'])/row['open']*100):+.2f}%"
-        volume = f"{row['volume']:,.2f}"
-        
-        # Color code the change
-        change_style = "red" if "-" in change else "green"
-        table.add_row(time, price, change, volume, style=change_style)
+    table = Table(title=title, show_header=True, header_style="bold magenta")
     
-    console.print(table) 
+    # Determine the columns dynamically, preserving the order of keys
+    columns = []  # Use a list to preserve order
+    for crypto, details in data.items():
+        if isinstance(details, dict):
+            # Add keys to the columns list in the order they appear
+            for key in details.keys():
+                if key not in columns:  # Avoid duplicates
+                    columns.append(key)
+            break  # Stop after the first cryptocurrency to get the keys
+    
+    # Add the "Cryptocurrency" column first
+    table.add_column("Cryptocurrency", style="cyan", justify="left")
+    
+    # Add the remaining columns in the order of keys
+    for column in columns:
+        table.add_column(column.capitalize(), justify="right")
+    
+    # Iterate through the dictionary and add rows
+    for crypto, details in data.items():
+        if isinstance(details, dict):
+            # Start the row with the cryptocurrency name
+            row = [crypto.capitalize()]
+            
+            # Add values for each column in the correct order
+            for column in columns:
+                value = details.get(column, "N/A")
+                
+                # Format the value based on the column title
+                formatted_value = format_value(value, column)
+                row.append(formatted_value)
+            
+            # Add the row to the table
+            table.add_row(*row)
+        else:
+            # Handle flat dictionaries (if any)
+            table.add_row(crypto.capitalize(), format_value(details))
+    
+    # Print the table
+    console.print(table)
+
+def format_value(value: Any, column: str) -> str:
+    """
+    Format a value for display in the table based on the column title.
+
+    Args:
+        value (Any): The value to format.
+        column (str): The column title (used to determine formatting).
+
+    Returns:
+        str: The formatted value.
+    """
+    if isinstance(value, (float, int)):
+        # Handle numeric values
+        if "last" in column.lower():
+            # Convert timestamp to readable date-time
+            try:
+                timestamp = int(value)  # Convert to integer
+                return datetime.fromtimestamp(timestamp).strftime('%Y-%m-%d %H:%M:%S')
+            except (ValueError, TypeError):
+                return str(value)  # Return as-is if conversion fails
+        elif "usd" in column.lower():
+            return f"${value:,.2f}"  # USD currency format
+        elif "eur" in column.lower():
+            return f"€{value:,.2f}"  # EUR currency format
+        elif "change" in column.lower():
+            return f"{value:,.2f}%"  # Percentage change format
+        else:
+            return f"{value:,.2f}"  # Default number format
+    else:
+        return str(value)  # Convert other types to strings
 
 def print_backtest_results(results: Dict):
     """Print backtest results"""
@@ -77,39 +108,6 @@ def print_backtest_results(results: Dict):
     total_return = ((results['final_balance'] - results['initial_balance']) / results['initial_balance']) * 100
     return_str = f"Total Return: {total_return:+.2f}%"
     console.print(return_str, style="profit" if total_return > 0 else "loss") 
-
-def print_api_config(config, client, debug: bool = False):
-    """Print API configuration details when in debug mode"""
-    console.print("\n[dim]─── API Configuration ───[/]")
-    table = Table(show_edge=False, box=None, padding=(0, 1))
-    table.add_column("Provider", style="dim")
-    table.add_column("Model", style="dim")
-    
-    # Get provider with better default handling
-    provider = os.getenv('AI_PROVIDER', 'LOCAL')
-    
-    # Only add temperature and max_tokens columns for non-local providers
-    if provider != 'LOCAL':
-        table.add_column("Temperature", style="dim")
-        table.add_column("Max Tokens", style="dim")
-    
-    table.add_column("Base URL", style="dim")
-    
-    row = [provider, config.model or 'N/A']
-    
-    # Add temperature and max_tokens only for non-local providers
-    if provider != 'LOCAL':
-        row.extend([
-            str(getattr(config, 'temperature', 'N/A')),
-            str(getattr(config, 'max_tokens', 'N/A'))
-        ])
-    
-    # Handle None client in mock mode
-    base_url = client.base_url if client else 'MOCK'
-    row.append(base_url)
-    
-    table.add_row(*row)
-    console.print(table)
 
 def print_market_config(exchange: str, symbol: str, timeframe: str, candles: int = None, 
                        start_date: datetime = None, end_date: datetime = None):
@@ -170,10 +168,6 @@ def print_trading_data(market_data: Dict, current_position: float, required_chan
     
     table.add_row(*row)
     console.print(table) 
-
-def print_api_error(error: str):
-    """Print API error response"""
-    console.print(f"API Error Response: {error}", style="error")
 
 def print_trading_decision(decision: Dict, market_data: Dict = None, position: float = None, 
                          required_change: float = None, volatility_adjustment: float = None,
@@ -264,82 +258,6 @@ def print_candle_analysis(market_data: Dict, config: Dict, decision: Dict, posit
                  f"[bold]Decision:[/] {decision['action']} | Size: {decision['amount']:.2f} | AI Conf: {decision['confidence']}% | "
                  f"[bold]Reason:[/] {decision['reasoning']}")
 
-def print_trading_check(params: Dict, decision: Dict, position: float):
-    """Print trading parameters check"""
-    # 1. Trading Parameters
-    console.print("\n[dim]─── Trading Parameters ───[/]")
-    params_table = Table(show_edge=False, box=None, padding=(0, 1))
-    params_table.add_column("Min Conf", style="dim")
-    params_table.add_column("Base Thresh", style="dim")
-    params_table.add_column("Position Range", style="dim")
-    params_table.add_column("Stop Loss", style="dim")
-    
-    # Access nested config values correctly
-    min_confidence = params.get('min_confidence', 'N/A')
-    base_threshold = params.get('base_threshold', 'N/A')
-    min_position = params.get('position_sizing', {}).get('min_position_size', 'N/A')
-    max_position = params.get('position_sizing', {}).get('max_position_size', 'N/A')
-    stop_loss = params.get('stop_loss', {}).get('initial', 'N/A')
-    trailing_stop = params.get('stop_loss', {}).get('trailing', 'N/A')
-    
-    params_table.add_row(
-        f"{min_confidence}%",
-        f"{base_threshold:.4f}%" if isinstance(base_threshold, (int, float)) else "N/A",
-        f"{min_position}-{max_position}",
-        f"{stop_loss}% (Trail: {trailing_stop}%)"
-    )
-    console.print(params_table)
-
-    # 2. Decision
-    console.print("\n[dim]─── Trading Decision ───[/]")
-    console.print(f"Action: {decision['action']} | "
-                 f"Size: {decision['amount']:.2f} | "
-                 f"Confidence: {decision['confidence']}%")
-
-def print_size_adjustment(new_size: float):
-    """Print size adjustment message"""
-    console.print(f"[dim]Adjusted size to minimum: {new_size:.2f}[/]") 
-
-def format_debug_str(market_data: Dict, position: float, symbol: str, 
-                    required_change: float = None, volatility_adjustment: float = None,
-                    include_decision: bool = False, decision: Dict = None) -> str:
-    """Format debug string with market data"""
-    debug_str = (
-        f"Candle#{market_data.get('candle_number', 0):04d} | "
-        f"{symbol} | "
-        f"Price: ${market_data['price']:,.2f} | "
-        f"Change: {market_data['change_24h']:+.4f}% | "
-        f"Vol: {market_data['volume']:.2f} | "
-        f"Pos: {position:.3f}"
-    )
-    
-    if required_change is not None:
-        debug_str += f" | Req: {required_change:.4f}% (Vol: {volatility_adjustment:.2f}x)"
-        
-    if include_decision and decision:
-        debug_str += f" | {decision['action']} ({decision['confidence']}%)"
-        
-    return debug_str 
-
-def print_ai_prompt(prompt: str):
-    """Print AI prompt in debug mode"""
-    console.print("\n[dim]─── AI Prompt ───[/]")
-    console.print(prompt)
-
-def print_parse_error(error: str, response: str):
-    """Print error information when parsing AI response"""
-    console.print(f"[error]Error parsing response: {error}[/]")
-    console.print(f"[dim]Raw response:[/]\n{response}")
-
-def print_trading_error(error: str):
-    """Print error when generating trading decision"""
-    console.print(f"[error]Error generating trading decision: {error}[/]")
-
-def print_ai_response(response: str):
-    """Print AI response in debug mode"""
-    console.print("[dim]─── AI Response ───[/]")
-    console.print(response)
-
 def print_risk_analysis(trade: Dict[str, Any], market_data: Dict[str, Any]):
     """Print risk analysis for a trade"""
     console.print("\n[dim]─── Risk Analysis ───[/]")
@@ -375,33 +293,4 @@ def print_risk_analysis(trade: Dict[str, Any], market_data: Dict[str, Any]):
     
     console.print(table)
 
-def print_loading_start(exchange: str):
-    """Print market data loading start message"""
-    console.print("\n[dim]─── Data Loading ───[/]")
-    console.print(f"Loading market data from {exchange.upper()}...", style="info")
 
-def print_loading_complete():
-    """Print market data loading complete message"""
-    console.print("Market data loading complete.", style="success")
-
-def print_backtest_progress(message: str):
-    """Print backtest progress message"""
-    print(f"[Backtest] {message}")
-
-def print_backtest_error(message: str):
-    """Print backtest error message"""
-    print(f"[Backtest Error] {message}")
-
-def print_mock_trading():
-    """Print mock trading message"""
-    console.print("\n[dim]─── Mock Trading ───[/]")
-    console.print("Generating mock trading decision...", style="info")
-
-def print_trading_error(error: str):
-    """Print trading error message"""
-    console.print(f"\n[red]Trading Error: {error}[/]")
-
-def print_trading_data(data: dict):
-    """Print trading data"""
-    console.print("\n[dim]─── Trading Data ───[/]")
-    console.print(data)

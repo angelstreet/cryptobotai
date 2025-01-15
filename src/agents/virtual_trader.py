@@ -1,6 +1,6 @@
 from typing import Dict, Any
 from .trader import TraderAgent
-from src.utils.display import print_mock_trading
+#from src.utils.display import print_mock_trading
 
 class VirtualTraderAgent(TraderAgent):
     """Simulates trades in sandbox environment"""

@@ -1,8 +1,7 @@
 from abc import abstractmethod
-from typing import Dict, Any, Optional, List
-from crewai import Agent, Task
+from typing import Dict, Any, List
+from crewai import Agent
 from pydantic import Field, ConfigDict
-from src.utils.display import print_trading_error, print_trading_data
 
 class TraderAgent(Agent):
     """Base trader agent with shared functionality"""
@@ -86,19 +85,3 @@ class TraderAgent(Agent):
                 self._current_position = max(0.0, self._current_position - trade_result['filled'])
                 if self._current_position == 0.0:
                     self._entry_price = 0.0
-
-    @property
-    def historical_data(self):
-        return self._historical_data
-
-    @historical_data.setter
-    def historical_data(self, value):
-        self._historical_data = value
-
-    @property
-    def current_position(self):
-        return self._current_position
-
-    @property
-    def entry_price(self):
-        return self._entry_price 

@@ -1,13 +1,13 @@
 import os
-from typing import Optional, Dict, Any, List
 from dotenv import load_dotenv
-from crewai import Crew, Task, LLM
+from crewai import LLM
 from src.agents.receptionist import ReceptionistAgent
 from src.agents.portfolio_manager import PortfolioManagerAgent
 from src.agents.data_analyst import DataAnalystAgent
 from flows.receptionist_flow import ReceptionistFlow
 from src.config.models.portfolio import Action
 from src.agents.data_analyst import BTC,ETH,TimeFrame
+import src.agents.data_analyst  as dt
 
 class CryptoAgency:
     """AI Crypto Trading Agency using crewai"""
@@ -15,6 +15,7 @@ class CryptoAgency:
     def __init__(self, config): 
         self.config = config
         self.config.debug = config.debug
+        self.config.display_currency = config.display_currency
         llm = self._init_llm()
         self.config.llm = llm
     
@@ -56,10 +57,10 @@ class CryptoAgency:
         #self.portfolio_manager.add_transaction("virtual","virtual-1","ETH/USDT",1,3276.46,Action.BUY) 
         #self.portfolio_manager.add_transaction("virtual","virtual-1","BTC/USDT",0.1,80000,Action.SELL) 
         #self.portfolio_manager.delete_transaction("virtual","virtual-1","sell-20250112-202525")
-        #self.portfolio_manager.show_portfolio()
+        #dt.coingecko_get_price([BTC,ETH])
+        self.portfolio_manager.show_portfolio()
         #self.portfolio_manager.show_orders()
-        #self.data_analyst.coingecko_get_price([BTC,ETH])
-        data = self.data_analyst.coingecko_get_historical_data(BTC,"USD",TimeFrame.DAY,)
-        #self.data_analyst.print_coingecko_historical_table(BTC,"USD",TimeFrame.DAY,data)
-        #self.data_analyst.print_coingecko_historical_chart(BTC,"USD",TimeFrame.DAY,data)
-        self.data_analyst.plot_plotext_chart(BTC,"USD",data)
+        #data = dt.coingecko_get_historical_data(BTC,"USD",TimeFrame.DAY,)
+        #dt.print_coingecko_historical_table(BTC,"USD",TimeFrame.DAY,data)
+        #dt.print_coingecko_historical_chart(BTC,"USD",TimeFrame.DAY,data)
+        #dt.plot_plotext_chart(BTC,"USD",data)

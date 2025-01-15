@@ -1,4 +1,4 @@
-from typing import Dict, Any, Optional
+from typing import Dict, Any
 from queue import Queue
 from threading import Event
 from .trader import TraderAgent
