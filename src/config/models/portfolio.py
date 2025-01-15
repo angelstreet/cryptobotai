@@ -3,6 +3,10 @@ from typing import Dict, List, Optional
 from datetime import datetime
 from enum import Enum
 
+class AccountType(Enum):
+    REAL = "REAL"
+    VIRTUAL = "VIRTUAL"
+    
 class Action(Enum):
     BUY = "BUY"
     SELL = "SELL"
@@ -32,10 +36,9 @@ class OrderDetails:
 class Position:
     amount: float = 0.0
     mean_price: float = 0.0
-    pending_buy: float = 0.0
-    pending_sell: float = 0.0
-    estimated_cost_usd: float = 0.0
-    estimated_value_usd: float = 0.0
+    subtotal_cost: float = 0.0
+    total_cost: float = 0.0
+    total_fees: float = 0.0
     orders: List[OrderDetails] = field(default_factory=list)
 
 @dataclass
@@ -54,10 +57,9 @@ class Account:
                 symbol: {
                     'amount': pos.amount,
                     'mean_price': pos.mean_price,
-                    'pending_buy': pos.pending_buy,
-                    'pending_sell': pos.pending_sell,
-                    'estimated_cost_usd': pos.estimated_cost_usd,
-                    'estimated_value_usd': pos.estimated_value_usd,
+                    'subtotal_cost': pos.subtotal_cost,
+                    'total_cost': pos.total_cost,
+                    'total_fees': pos.total_fees,
                     'orders': [
                         {
                             'order_id': order.order_id,
@@ -146,10 +148,9 @@ class Portfolio:
                     account.positions[symbol] = Position(
                         amount=pos_data['amount'],
                         mean_price=pos_data['mean_price'],
-                        pending_buy=pos_data.get('pending_buy', 0.0),
-                        pending_sell=pos_data.get('pending_sell', 0.0),
-                        estimated_cost_usd=pos_data['estimated_cost_usd'],
-                        estimated_value_usd=pos_data['estimated_value_usd'],
+                        subtotal_cost=pos_data['subtotal_cost'],
+                        total_cost=pos_data['total_cost'],
+                        total_fees=pos_data['total_fees'],
                         orders=orders
                     )
                 

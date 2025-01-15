@@ -6,7 +6,7 @@ from pathlib import Path
 import json
 from dotenv import load_dotenv
 from json import dumps
-from enum import Enum
+from src.config.models.portfolio import AccountType, Action
 from src.agents.data_analyst import BTC, ETH
 import src.agents.data_analyst as dt
 from coinbase.rest import RESTClient
@@ -18,11 +18,6 @@ from src.config.models.portfolio import (
     Portfolio, Position, OrderDetails, Exchange, 
     Account, AccountType, Action
 )
-
-class Action(Enum):
-    BUY = "buy"
-    SELL = "sell"
-    SPOT = "spot"
 
 class PortfolioPrinter:
     def __init__(self, console: Console):
@@ -43,7 +38,7 @@ class PortfolioPrinter:
         total_estimated_value = 0
         total_cost = 0  # New variable to track total cost
         total_pnl = 0  # New variable to track total PNL
-        total_estimated_price = 0  # New variable to track total estimated price
+        total_worth = 0  # New variable to track total estimated price
         
         # Mapping from portfolio symbols to CoinGecko IDs
         symbol_to_coingecko = {
@@ -56,12 +51,24 @@ class PortfolioPrinter:
         
         for exchange_name, exchange in portfolio['exchanges'].items():
             self.console.print(f"[bold]{exchange_name}[/]")
-            
+
+            # Empty virtual account          
+            if not exchange['accounts']:
+                print("Empty portfolio...continue")
+                continue
+            account = list(exchange['accounts'].values())[0]
+            account_id = account['account_id']
+            positions = account['positions']
+            if not positions:
+                print(f"Empty portfolio {account_id}...continue")
+                continue
+            # Print portfolio
+            print(exchange['accounts'])
             for account_id, account in exchange['accounts'].items():
                 account_value = 0
                 account_cost = 0  
                 account_pnl = 0 
-                account_estimated_price = 0
+                account_worth = 0
                 
                 table = Table(show_header=True, header_style="bold magenta", box=box.ROUNDED)
                 table.add_column(f"{account['name']}", style="dim", justify="left")
@@ -69,7 +76,7 @@ class PortfolioPrinter:
                 table.add_column("Cost", justify="right", style="cyan")
                 table.add_column("Total Cost", justify="right", style="cyan")
                 table.add_column("Value", justify="right", style="cyan")
-                table.add_column("Total Value", justify="right", style="cyan")
+                table.add_column("Total Worth", justify="right", style="cyan")
                 table.add_column("PNL", justify="right", style="cyan")
                 table.add_column("PNL %", justify="right", style="cyan")
                 
@@ -86,11 +93,11 @@ class PortfolioPrinter:
                     account_value += value
                     account_cost += cost
                     account_pnl += pnl
-                    account_estimated_price += current_price  # Add up estimated prices
+                    account_worth += current_price  # Add up estimated prices
                     total_portfolio_value += value
                     total_cost += cost
                     total_pnl += pnl
-                    total_estimated_price += current_price  # Add up estimated prices
+                    total_worth += current_price  # Add up estimated prices
                     
                     table.add_row(
                         base_asset,
@@ -107,7 +114,7 @@ class PortfolioPrinter:
                 table.add_row(
                     "[bold]Total[/]", "", "",
                     f"[bold]{currency}{account_cost:,.2f}[/]",  # Total Cost
-                    f"[bold]{currency}{account_estimated_price:,.2f}[/]",  # Estimated Price Total (sum of rows)
+                    f"[bold]{currency}{account_worth:,.2f}[/]",  # Estimated Price Total (sum of rows)
                     f"[bold]{currency}{account_value:,.2f}[/]",  # Total Estimated
                     f"[green]{currency}{account_pnl:,.2f}[/]" if account_pnl >= 0 else f"[red]{currency}{account_pnl:,.2f}[/]",  # PNL
                     f"[green]{(account_pnl / account_cost) * 100:+.2f}%[/]" if account_pnl >= 0 else f"[red]{(account_pnl / account_cost) * 100:+.2f}%[/]"  # PNL %
@@ -189,24 +196,31 @@ class PortfolioManagerAgent:
         """Load portfolio from file, handling empty or invalid files"""
         if path:
             self.portfolio_path = path
+
+        # Initialize a fresh portfolio if loading fails
+        self.portfolio = Portfolio()
+
         try:
             with open(self.portfolio_path, 'r') as f:
                 data = json.load(f)
                 
                 # Check if file is empty or missing required structure
                 if not data or 'exchanges' not in data:
-                    # Return fresh portfolio
-                    self.portfolio = Portfolio()
+                    console.print("[yellow]Portfolio file is empty or invalid. Initializing a fresh portfolio.[/]")
                     return self.portfolio
                 
-                self.portfolio =Portfolio.parse_obj(data)
+                # Parse the portfolio data
+                print(data)
+                self.portfolio = Portfolio.parse_obj(data)
+                console.print("[green]Portfolio loaded successfully![/]")
                 
-        except (FileNotFoundError, json.JSONDecodeError):
+        except (FileNotFoundError, json.JSONDecodeError) as e:
             # Handle both missing file and invalid JSON
-            return Portfolio()
+            console.print(f"[yellow]Error loading portfolio: {e}. Initializing a fresh portfolio.[/]")
         except Exception as e:
-            print(f"[red]Error loading portfolio: {str(e)}[/red]")
-            self.portfolio = Portfolio()
+            console.print(f"[red]Unexpected error loading portfolio: {e}[/]")
+        
+        return self.portfolio
 
     def _validate_portfolio_structure(self) -> None:
         """Ensure portfolio has all required fields with valid types"""
@@ -240,7 +254,7 @@ class PortfolioManagerAgent:
 
     def _create_account(self, exchange_name: str, account_id: str, 
                       account_name: str, account_type: AccountType) -> Account:
-        exchange = self.create_exchange(exchange_name)
+        exchange = self._create_exchange(exchange_name)
         if account_id not in exchange.accounts:
             exchange.accounts[account_id] = Account(
                 account_id=account_id,
@@ -253,6 +267,11 @@ class PortfolioManagerAgent:
     def show_portfolio(self):
         """Display portfolio overview"""
         portfolio_dict = self.portfolio.dict()
+        # Check if the portfolio is empty
+        if not portfolio_dict.get('exchanges'):
+            self.printer.console.print("[yellow]Portfolio is empty. No data to display.[/]")
+            return
+
         coingecko_prices = dt.coingecko_get_price(crypto_ids=[BTC, ETH], currency=self.config.display_currency)
         self.printer.print_portfolio(portfolio_dict, coingecko_prices)
 
@@ -265,7 +284,7 @@ class PortfolioManagerAgent:
                    amount: float, price: float, action: Action, fee_rate: float = 0.5) -> None:
         """Add a new transaction to a specific account in an exchange"""
         if exchange not in self.portfolio.exchanges or \
-           account_id not in self.portfolio.exchanges[exchange].accounts:
+        account_id not in self.portfolio.exchanges[exchange].accounts:
             raise ValueError(f"Invalid exchange or account: {exchange}/{account_id}")
 
         account = self.portfolio.exchanges[exchange].accounts[account_id]
@@ -287,6 +306,7 @@ class PortfolioManagerAgent:
             total=float(total),
             last_filled=datetime.now().strftime('%Y-%m-%d %H:%M:%S')
         )
+        
         if action.value == Action.SELL:
             if symbol not in account.positions:
                 raise ValueError(f"Cannot SELL {symbol}: no position exists")
@@ -300,29 +320,37 @@ class PortfolioManagerAgent:
             account.positions[symbol] = Position(
                 amount=float(amount),
                 mean_price=float(price),
-                estimated_cost_usd=float(total),
-                estimated_value_usd=float(subtotal),
-                orders=[order]
+                subtotal_cost=float(subtotal),  # Subtotal cost (without fees)
+                total_cost=float(total),        # Total cost (including fees)
+                total_fees=float(fee),          # Total fees
+                orders=[order]                  # List of orders
             )
         else:
             position = account.positions[symbol]
             current_amount = float(position.amount)
-            current_cost = float(position.estimated_cost_usd)
+            current_cost = float(position.subtotal_cost)
+            current_fees = float(position.total_fees)
+            current_total = float(position.total_cost)
             
             if action is Action.BUY: 
                 new_amount = float(current_amount) + float(amount)
-                new_cost = float(current_cost) + float(total)
+                new_subtotal_cost = float(current_cost) + float(subtotal)
+                new_fees = float(current_fees) + float(fee)
+                new_total_cost = float(current_total) + float(total)
                 
                 position.amount = float(new_amount)
-                position.mean_price = float(new_cost / new_amount)
-                position.estimated_cost_usd = float(new_cost)
-                position.estimated_value_usd = float(new_amount * price)
+                position.mean_price = float(new_subtotal_cost / new_amount)  # Recalculate mean price
+                position.subtotal_cost = float(new_subtotal_cost)
+                position.total_cost = float(new_total_cost)
+                position.total_fees = float(new_fees)
             else: 
+                # For SELL actions, reduce the amount and adjust costs
                 new_amount = float(current_amount) - float(amount)
                 position.amount = float(new_amount)
-                position.estimated_cost_usd = float(new_amount * float(position.mean_price))
-                position.estimated_value_usd = float(new_amount * float(price))
+                position.subtotal_cost = float(new_amount * position.mean_price)
+                position.total_cost = float(new_amount * position.mean_price) + float(position.total_fees)
 
+            # Append the new order to the position's order history
             position.orders.append(order)
 
         # Save changes immediately
@@ -421,14 +449,6 @@ class PortfolioManagerAgent:
             raise ValueError(f"Order {order_id} not found in {exchange}/{account_id}")
 
     def init_coinbase_client(self) -> None:
-        """Init coinbase client"""
-        load_dotenv()
-        api_key= os.getenv('COINBASE_API_KEY', '')
-        api_secret= os.getenv('COINBASE_API_SECRET', '')
-        client = RESTClient(api_key=api_key, api_secret=api_secret)
-        self.coinbase_client = client
-
-    def init_coinbase_client(self) -> None:
         """Initialize Coinbase client using environment variables."""
         load_dotenv()
         api_key = os.getenv('COINBASE_API_KEY', '')
@@ -447,62 +467,65 @@ class PortfolioManagerAgent:
             console.print("[yellow]Coinbase client not initialized...")
             self.init_coinbase_client() 
         
-        console.print("[bold]Syncing Coinbase data...[/]")
+        console.print("\n[bold]Syncing Coinbase data...[/]")
         
         try:
             response = self.coinbase_client.get_portfolios()
-            print(response)
-            
-            if not response or not hasattr(response, 'portfolios'):
+            if not response or not hasattr(response, 'portfolios') or not response.portfolios:
                 console.print("[yellow]No portfolios found in Coinbase response.[/]")
                 return
             
-            portfolios = response["portfolios"]
+            portfolios = response.portfolios
             coinbase_exchange = self._create_exchange("coinbase")
+            
             for portfolio in portfolios:
                 portfolio_id = portfolio.uuid  # Use 'uuid' as the portfolio ID
                 portfolio_name = portfolio.name
-                portfolio_type   = portfolio.type
-                print(portfolio_id,portfolio_name,portfolio_type)
+                
                 if not portfolio_id or not portfolio_name:
                     console.print(f"[yellow]Skipping invalid portfolio: {portfolio}[/]")
                     continue
                 
-                # Fetch balances for the portfolio
-                balances_response = self.coinbase_client.get_portfolio_balances(portfolio_id)
+                # Fetch portfolio breakdown for the portfolio
+                breakdown_response = self.coinbase_client.get_portfolio_breakdown(portfolio_id)
                 
-                # Check if the balances response is valid
-                if not balances_response or not hasattr(balances_response, 'balances'):
-                    console.print(f"[yellow]No balances found for portfolio {portfolio_name}.[/]")
+                # Check if the breakdown response is valid
+                if not breakdown_response or not hasattr(breakdown_response, 'breakdown'):
+                    console.print(f"[yellow]No breakdown found for portfolio {portfolio_name}.[/]")
                     continue
                 
-                balances = balances_response.balances
+                breakdown = breakdown_response.breakdown
+                
+                # Check if spot positions are available in the breakdown
+                if not hasattr(breakdown, 'spot_positions') or not breakdown.spot_positions:
+                    console.print(f"[yellow]No spot positions found for portfolio {portfolio_name}.[/]")
+                    continue
+                
+                spot_positions = breakdown.spot_positions
                 
                 coinbase_account = self._create_account(
                     exchange_name="coinbase",
                     account_id=portfolio_id,
                     account_name=portfolio_name,
-                    account_type=AccountType.SPOT
+                    account_type=AccountType.REAL  # Use the correct enum value
                 )
                 
-                for balance in balances:
-                    currency = balance.currency  # Access the 'currency' attribute directly
-                    amount = float(balance.amount)  # Access the 'amount' attribute directly
-                    
-                    if not currency:
-                        console.print(f"[yellow]Skipping invalid balance: {balance}[/]")
-                        continue
+                for position in spot_positions:
+                    symbol = position.asset  # Use 'asset' for the currency symbol
+                    amount = float(position.total_balance_crypto)  # Use 'total_balance_crypto' for the amount
+                    cost_basis = float(position.cost_basis)
+                    coast = float(cost_basis.value)
+                    if cost_basis.currency == "EUR":
+                        coast = coast * self.config.currency_rates["EUR/USD"]
                     
                     # Update the position for the currency
-                    symbol = f"{currency}/USD"  # Assuming USD as the quote currency
                     if symbol in coinbase_account.positions:
-                        position = coinbase_account.positions[symbol]
-                        position.amount = amount
+                        coinbase_account.positions[symbol].amount = amount
                     else:
                         coinbase_account.positions[symbol] = Position(
                             amount=amount,
-                            mean_price=0,  # Set to 0 for now (can be updated later)
-                            estimated_cost_usd=0,
+                            mean_price = float(coast) / float(amount),  # Set to 0 for now (can be updated later)
+                            estimated_cost_usd=coast,
                             estimated_value_usd=0,
                             orders=[]
                         )
