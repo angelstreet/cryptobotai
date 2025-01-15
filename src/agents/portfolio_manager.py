@@ -51,8 +51,7 @@ class PortfolioPrinter:
         
         for exchange_name, exchange in portfolio['exchanges'].items():
             self.console.print(f"[bold]{exchange_name}[/]")
-
-            # Empty virtual account          
+         
             if not exchange['accounts']:
                 print("Empty portfolio...continue")
                 continue
@@ -63,7 +62,6 @@ class PortfolioPrinter:
                 print(f"Empty portfolio {account_id}...continue")
                 continue
             # Print portfolio
-            print(exchange['accounts'])
             for account_id, account in exchange['accounts'].items():
                 account_value = 0
                 account_cost = 0  
@@ -80,10 +78,8 @@ class PortfolioPrinter:
                 table.add_column("PNL", justify="right", style="cyan")
                 table.add_column("PNL %", justify="right", style="cyan")
                 
-                for symbol, pos in account['positions'].items():
-                    base_asset, quote_currency = symbol.split('/')
-                    
-                    coingecko_id = symbol_to_coingecko.get(base_asset, base_asset.lower())
+                for symbol, pos in account['positions'].items():   
+                    coingecko_id = symbol_to_coingecko.get(symbol, symbol.lower())
                     current_price = coingecko_prices.get(coingecko_id, {}).get('price', pos['mean_price'])
                     value = pos['amount'] * current_price
                     cost = pos['amount'] * pos['mean_price']
@@ -100,7 +96,7 @@ class PortfolioPrinter:
                     total_worth += current_price  # Add up estimated prices
                     
                     table.add_row(
-                        base_asset,
+                        symbol,
                         f"{pos['amount']:.4f}",
                         f"{currency}{pos['mean_price']:,.2f}",
                         f"{currency}{cost:,.2f}",
@@ -210,7 +206,6 @@ class PortfolioManagerAgent:
                     return self.portfolio
                 
                 # Parse the portfolio data
-                print(data)
                 self.portfolio = Portfolio.parse_obj(data)
                 console.print("[green]Portfolio loaded successfully![/]")
                 
@@ -239,21 +234,24 @@ class PortfolioManagerAgent:
         if not hasattr(self.portfolio, 'display_currency'):
             self.portfolio.display_currency = '$'
             
-        self._save_portfolio()
+        #self._save_portfolio()
 
     def _save_portfolio(self):
+        console.print("Saving portfolio...")
         with open(self.portfolio_path, 'w') as f:
             portfolio_dict = self.portfolio.dict()
             json.dump(portfolio_dict, f, indent=4)
 
     def _create_exchange(self, name: str) -> Exchange:
         if name not in self.portfolio.exchanges:
+            print("create exchange")
             self.portfolio.exchanges[name] = Exchange(name=name)
             self._save_portfolio()
         return self.portfolio.exchanges[name]
 
     def _create_account(self, exchange_name: str, account_id: str, 
                       account_name: str, account_type: AccountType) -> Account:
+        print("create account")
         exchange = self._create_exchange(exchange_name)
         if account_id not in exchange.accounts:
             exchange.accounts[account_id] = Account(
@@ -315,9 +313,11 @@ class PortfolioManagerAgent:
                 raise ValueError(f"Cannot SELL {amount} {symbol}: only {float(current_amount)} available")
 
         # Handle position creation or update
-        if symbol not in account.positions:
+        base_asset = symbol.split('/')[0]
+        if base_asset not in account.positions:
             # Create new position (only for BUY)
-            account.positions[symbol] = Position(
+            print('create new position')
+            account.positions[base_asset] = Position(
                 amount=float(amount),
                 mean_price=float(price),
                 subtotal_cost=float(subtotal),  # Subtotal cost (without fees)
@@ -326,7 +326,8 @@ class PortfolioManagerAgent:
                 orders=[order]                  # List of orders
             )
         else:
-            position = account.positions[symbol]
+            print('update position')
+            position = account.positions[base_asset]
             current_amount = float(position.amount)
             current_cost = float(position.subtotal_cost)
             current_fees = float(position.total_fees)
@@ -502,7 +503,6 @@ class PortfolioManagerAgent:
                     continue
                 
                 spot_positions = breakdown.spot_positions
-                
                 coinbase_account = self._create_account(
                     exchange_name="coinbase",
                     account_id=portfolio_id,
@@ -513,10 +513,17 @@ class PortfolioManagerAgent:
                 for position in spot_positions:
                     symbol = position.asset  # Use 'asset' for the currency symbol
                     amount = float(position.total_balance_crypto)  # Use 'total_balance_crypto' for the amount
-                    cost_basis = float(position.cost_basis)
-                    coast = float(cost_basis.value)
-                    if cost_basis.currency == "EUR":
-                        coast = coast * self.config.currency_rates["EUR/USD"]
+                    
+                    # Extract the cost basis value from the dictionary
+                    cost_basis = position.cost_basis
+                    if isinstance(cost_basis, dict) and 'value' in cost_basis:
+                        cost_basis_value = float(cost_basis['value'])
+                    else:
+                        cost_basis_value = 0.0  # Default to 0 if cost_basis is not a dictionary or missing 'value'
+                    
+                    # Convert cost basis to USD if it's in EUR
+                    if cost_basis.get('currency') == "EUR":
+                        cost_basis_value = cost_basis_value * self.portfolio.currency_rates["EUR/USD"]
                     
                     # Update the position for the currency
                     if symbol in coinbase_account.positions:
@@ -524,15 +531,16 @@ class PortfolioManagerAgent:
                     else:
                         coinbase_account.positions[symbol] = Position(
                             amount=amount,
-                            mean_price = float(coast) / float(amount),  # Set to 0 for now (can be updated later)
-                            estimated_cost_usd=coast,
-                            estimated_value_usd=0,
+                            mean_price=float(cost_basis_value) / float(amount),  # Recalculate mean price
+                            subtotal_cost=float(cost_basis_value),
+                            total_cost=float(cost_basis_value),
+                            total_fees=0,
                             orders=[]
                         )
+                
+                # Save the updated portfolio
+                self._save_portfolio()
+                console.print("[green]Coinbase data synced successfully![/]")
             
-            # Save the updated portfolio
-            self._save_portfolio()
-            console.print("[green]Coinbase data synced successfully![/]")
-        
         except Exception as e:
             console.print(f"[red]Error syncing Coinbase data: {e}[/]")

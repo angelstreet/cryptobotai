@@ -8,7 +8,7 @@
                     "name": "Portfolio 1",
                     "account_type": "VIRTUAL",
                     "positions": {
-                        "BTC/USDT": {
+                        "BTC": {
                             "amount": 2.0,
                             "mean_price": 99000.0,
                             "subtotal_cost": 198000.0,
@@ -16,11 +16,11 @@
                             "total_fees": 990.0,
                             "orders": [
                                 {
-                                    "order_id": "buy-20250115-224944",
+                                    "order_id": "buy-20250115-232920",
                                     "pair": "BTC/USDT",
                                     "order_type": "Market Buy",
                                     "status": "Filled",
-                                    "last_filled": "2025-01-15 22:49:44",
+                                    "last_filled": "2025-01-15 23:29:20",
                                     "amount": 1.0,
                                     "execution_price": 99000.0,
                                     "subtotal": 99000.0,
@@ -28,16 +28,37 @@
                                     "total": 99495.0
                                 },
                                 {
-                                    "order_id": "buy-20250115-224952",
+                                    "order_id": "buy-20250115-233048",
                                     "pair": "BTC/USDT",
                                     "order_type": "Market Buy",
                                     "status": "Filled",
-                                    "last_filled": "2025-01-15 22:49:52",
+                                    "last_filled": "2025-01-15 23:30:48",
                                     "amount": 1.0,
                                     "execution_price": 99000.0,
                                     "subtotal": 99000.0,
                                     "fee": 495.0,
                                     "total": 99495.0
+                                }
+                            ]
+                        },
+                        "ETH": {
+                            "amount": 1.0,
+                            "mean_price": 3276.46,
+                            "subtotal_cost": 3276.46,
+                            "total_cost": 3292.8423000000003,
+                            "total_fees": 16.3823,
+                            "orders": [
+                                {
+                                    "order_id": "buy-20250115-232138",
+                                    "pair": "ETH/USDT",
+                                    "order_type": "Market Buy",
+                                    "status": "Filled",
+                                    "last_filled": "2025-01-15 23:21:38",
+                                    "amount": 1.0,
+                                    "execution_price": 3276.46,
+                                    "subtotal": 3276.46,
+                                    "fee": 16.3823,
+                                    "total": 3292.8423000000003
                                 }
                             ]
                         }
