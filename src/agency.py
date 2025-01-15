@@ -59,7 +59,7 @@ class CryptoAgency:
         #self.portfolio_manager.add_transaction("virtual","virtual-1","BTC/USDT",0.1,80000,Action.SELL) 
         #self.portfolio_manager.delete_transaction("virtual","virtual-1","sell-20250112-202525")
         #print_friendly_table(dt.coingecko_get_price([BTC,ETH]), "CoinGecko Simple Price")
-        #self.portfolio_manager.sync_coinbase()
+        self.portfolio_manager.sync_coinbase()
         self.portfolio_manager.show_portfolio()
         #self.portfolio_manager.show_orders()
         #data = dt.coingecko_get_historical_data(BTC,"USD",TimeFrame.DAY,)

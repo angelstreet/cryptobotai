@@ -47,6 +47,13 @@ class PortfolioPrinter:
             "SOL": "solana",
             "XRP": "xrp",
             "DOGE": "dogecoin",
+            "USDT": "tether",
+            "USDC": "usd-coin",
+            "BTC/USDT": "bitcoin",
+            "ETH/USDT": "ethereum",
+            "SOL/USDT": "solana",
+            "XRP/USDT": "xrp",
+            "DOGE/USDT": "dogecoin",
         }
         
         for exchange_name, exchange in portfolio['exchanges'].items():

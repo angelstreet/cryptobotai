@@ -65,6 +65,378 @@
                     }
                 }
             }
+        },
+        "coinbase": {
+            "name": "coinbase",
+            "accounts": {
+                "3bd34868-f123-5b6d-b1a1-2b044b9724ef": {
+                    "account_id": "3bd34868-f123-5b6d-b1a1-2b044b9724ef",
+                    "name": "Default",
+                    "account_type": "REAL",
+                    "positions": {
+                        "1INCH": {
+                            "amount": 1847.22,
+                            "mean_price": 0.580212966220925,
+                            "subtotal_cost": 1071.780995462617,
+                            "total_cost": 1071.780995462617,
+                            "total_fees": 0,
+                            "orders": []
+                        },
+                        "DASH": {
+                            "amount": 24.971,
+                            "mean_price": 61.506221627016465,
+                            "subtotal_cost": 1535.8718602482281,
+                            "total_cost": 1535.8718602482281,
+                            "total_fees": 0,
+                            "orders": []
+                        },
+                        "CVX": {
+                            "amount": 262.478,
+                            "mean_price": 5.90580808613814,
+                            "subtotal_cost": 1550.1446948333667,
+                            "total_cost": 1550.1446948333667,
+                            "total_fees": 0,
+                            "orders": []
+                        },
+                        "LPT": {
+                            "amount": 258.44,
+                            "mean_price": 17.622419579125538,
+                            "subtotal_cost": 4554.338116029204,
+                            "total_cost": 4554.338116029204,
+                            "total_fees": 0,
+                            "orders": []
+                        },
+                        "ADA": {
+                            "amount": 3578.3196,
+                            "mean_price": 1.020271076245345,
+                            "subtotal_cost": 3650.855989441812,
+                            "total_cost": 3650.855989441812,
+                            "total_fees": 0,
+                            "orders": []
+                        },
+                        "FLR": {
+                            "amount": 105694.0,
+                            "mean_price": 0.03391067039591577,
+                            "subtotal_cost": 3584.1543968259216,
+                            "total_cost": 3584.1543968259216,
+                            "total_fees": 0,
+                            "orders": []
+                        },
+                        "MANA": {
+                            "amount": 600.0,
+                            "mean_price": 0.7573233095580865,
+                            "subtotal_cost": 454.39398573485187,
+                            "total_cost": 454.39398573485187,
+                            "total_fees": 0,
+                            "orders": []
+                        },
+                        "MATIC": {
+                            "amount": 0.00014233,
+                            "mean_price": 0.5912360292808786,
+                            "subtotal_cost": 2513.4711214776926,
+                            "total_cost": 2513.4711214776926,
+                            "total_fees": 0,
+                            "orders": []
+                        },
+                        "SHIB": {
+                            "amount": 27328824.0,
+                            "mean_price": 3.539891917971567e-05,
+                            "subtotal_cost": 967.4108320526739,
+                            "total_cost": 967.4108320526739,
+                            "total_fees": 0,
+                            "orders": []
+                        },
+                        "JASMY": {
+                            "amount": 11280.0,
+                            "mean_price": 0.0415066809686846,
+                            "subtotal_cost": 468.19536132676234,
+                            "total_cost": 468.19536132676234,
+                            "total_fees": 0,
+                            "orders": []
+                        },
+                        "RARI": {
+                            "amount": 300.0,
+                            "mean_price": 3.347456125915432,
+                            "subtotal_cost": 1004.2368377746296,
+                            "total_cost": 1004.2368377746296,
+                            "total_fees": 0,
+                            "orders": []
+                        },
+                        "CORECHAIN": {
+                            "amount": 3432.69,
+                            "mean_price": 1.42313061891639,
+                            "subtotal_cost": 4885.166244248103,
+                            "total_cost": 4885.166244248103,
+                            "total_fees": 0,
+                            "orders": []
+                        },
+                        "USDT": {
+                            "amount": 0.147888,
+                            "mean_price": 1.0450710638712002,
+                            "subtotal_cost": 0.15455346949378404,
+                            "total_cost": 0.15455346949378404,
+                            "total_fees": 0,
+                            "orders": []
+                        },
+                        "XLM": {
+                            "amount": 13848.452,
+                            "mean_price": 0.5027781490402295,
+                            "subtotal_cost": 6962.6990636324645,
+                            "total_cost": 6962.6990636324645,
+                            "total_fees": 0,
+                            "orders": []
+                        },
+                        "USDC": {
+                            "amount": 6529.306,
+                            "mean_price": 1.0505164107635776,
+                            "subtotal_cost": 6859.143103897091,
+                            "total_cost": 6859.143103897091,
+                            "total_fees": 0,
+                            "orders": []
+                        },
+                        "INJ": {
+                            "amount": 68.22,
+                            "mean_price": 30.62586206409605,
+                            "subtotal_cost": 2089.2963100126326,
+                            "total_cost": 2089.2963100126326,
+                            "total_fees": 0,
+                            "orders": []
+                        },
+                        "ETH": {
+                            "amount": 0.41692138,
+                            "mean_price": 2357.868215139964,
+                            "subtotal_cost": 1.2423843412393984,
+                            "total_cost": 1.2423843412393984,
+                            "total_fees": 0,
+                            "orders": []
+                        },
+                        "LINK": {
+                            "amount": 25.36,
+                            "mean_price": 20.99111637435201,
+                            "subtotal_cost": 532.334711253567,
+                            "total_cost": 532.334711253567,
+                            "total_fees": 0,
+                            "orders": []
+                        },
+                        "XRP": {
+                            "amount": 3.3e-05,
+                            "mean_price": 2.353212,
+                            "subtotal_cost": 7.7655996e-05,
+                            "total_cost": 7.7655996e-05,
+                            "total_fees": 0,
+                            "orders": []
+                        },
+                        "UNI": {
+                            "amount": 3e-06,
+                            "mean_price": 17.329867354230338,
+                            "subtotal_cost": 5.198960206269101e-05,
+                            "total_cost": 5.198960206269101e-05,
+                            "total_fees": 0,
+                            "orders": []
+                        },
+                        "DOGE": {
+                            "amount": 6000.0,
+                            "mean_price": 0.260073081,
+                            "subtotal_cost": 1560.438486,
+                            "total_cost": 1560.438486,
+                            "total_fees": 0,
+                            "orders": []
+                        },
+                        "ARKM": {
+                            "amount": 453.4,
+                            "mean_price": 2.2534483963063505,
+                            "subtotal_cost": 1021.7135028852994,
+                            "total_cost": 1021.7135028852994,
+                            "total_fees": 0,
+                            "orders": []
+                        },
+                        "HBAR": {
+                            "amount": 6832.6,
+                            "mean_price": 0.2879328960474262,
+                            "subtotal_cost": 1967.3303055336446,
+                            "total_cost": 1967.3303055336446,
+                            "total_fees": 0,
+                            "orders": []
+                        },
+                        "FET": {
+                            "amount": 166.2,
+                            "mean_price": 1.5741725955391295,
+                            "subtotal_cost": 261.6274853786033,
+                            "total_cost": 261.6274853786033,
+                            "total_fees": 0,
+                            "orders": []
+                        },
+                        "EOS": {
+                            "amount": 3168.9,
+                            "mean_price": 1.158314479706716,
+                            "subtotal_cost": 3670.582754742612,
+                            "total_cost": 3670.582754742612,
+                            "total_fees": 0,
+                            "orders": []
+                        },
+                        "QNT": {
+                            "amount": 6.605,
+                            "mean_price": 154.9961103281724,
+                            "subtotal_cost": 1023.7493087175787,
+                            "total_cost": 1023.7493087175787,
+                            "total_fees": 0,
+                            "orders": []
+                        },
+                        "CRV": {
+                            "amount": 1020.98,
+                            "mean_price": 1.0189413750611234,
+                            "subtotal_cost": 1040.3187651099058,
+                            "total_cost": 1040.3187651099058,
+                            "total_fees": 0,
+                            "orders": []
+                        },
+                        "SUSHI": {
+                            "amount": 2770.7,
+                            "mean_price": 2.2332072407130235,
+                            "subtotal_cost": 6187.547301843573,
+                            "total_cost": 6187.547301843573,
+                            "total_fees": 0,
+                            "orders": []
+                        },
+                        "XTZ": {
+                            "amount": 2019.89,
+                            "mean_price": 1.4455852058019623,
+                            "subtotal_cost": 2919.923101347326,
+                            "total_cost": 2919.923101347326,
+                            "total_fees": 0,
+                            "orders": []
+                        },
+                        "SAND": {
+                            "amount": 2229.49,
+                            "mean_price": 0.891730154237076,
+                            "subtotal_cost": 1988.1034615700185,
+                            "total_cost": 1988.1034615700185,
+                            "total_fees": 0,
+                            "orders": []
+                        },
+                        "FIL": {
+                            "amount": 71.956,
+                            "mean_price": 7.284760115727504,
+                            "subtotal_cost": 524.1821988872883,
+                            "total_cost": 524.1821988872883,
+                            "total_fees": 0,
+                            "orders": []
+                        },
+                        "PEPE": {
+                            "amount": 197492820.0,
+                            "mean_price": 1.9861860735567617e-05,
+                            "subtotal_cost": 3922.574887114523,
+                            "total_cost": 3922.574887114523,
+                            "total_fees": 0,
+                            "orders": []
+                        },
+                        "AVAX": {
+                            "amount": 4.363e-05,
+                            "mean_price": 52.5582,
+                            "subtotal_cost": 0.002293114266,
+                            "total_cost": 0.002293114266,
+                            "total_fees": 0,
+                            "orders": []
+                        },
+                        "PRO": {
+                            "amount": 1515.45,
+                            "mean_price": 1.4658714113401514,
+                            "subtotal_cost": 2221.4548303154324,
+                            "total_cost": 2221.4548303154324,
+                            "total_fees": 0,
+                            "orders": []
+                        },
+                        "SOL": {
+                            "amount": 0.000119176,
+                            "mean_price": 237.9781939283454,
+                            "subtotal_cost": 6149.353437391925,
+                            "total_cost": 6149.353437391925,
+                            "total_fees": 0,
+                            "orders": []
+                        },
+                        "VET": {
+                            "amount": 80993.0,
+                            "mean_price": 0.05944397309748693,
+                            "subtotal_cost": 4814.545713084759,
+                            "total_cost": 4814.545713084759,
+                            "total_fees": 0,
+                            "orders": []
+                        },
+                        "EUR": {
+                            "amount": 0.11305037,
+                            "mean_price": 1.079999983950517,
+                            "subtotal_cost": 0.12209439778560001,
+                            "total_cost": 0.12209439778560001,
+                            "total_fees": 0,
+                            "orders": []
+                        },
+                        "DOT": {
+                            "amount": 392.78204,
+                            "mean_price": 9.010608255438736,
+                            "subtotal_cost": 3539.205092212068,
+                            "total_cost": 3539.205092212068,
+                            "total_fees": 0,
+                            "orders": []
+                        },
+                        "AAVE": {
+                            "amount": 6.0,
+                            "mean_price": 306.3297303348102,
+                            "subtotal_cost": 1837.9783820088612,
+                            "total_cost": 1837.9783820088612,
+                            "total_fees": 0,
+                            "orders": []
+                        },
+                        "ALGO": {
+                            "amount": 13423.6,
+                            "mean_price": 0.4722853684256574,
+                            "subtotal_cost": 6339.769871598654,
+                            "total_cost": 6339.769871598654,
+                            "total_fees": 0,
+                            "orders": []
+                        },
+                        "COMP": {
+                            "amount": 12.816,
+                            "mean_price": 119.65342525728185,
+                            "subtotal_cost": 1533.4782980973243,
+                            "total_cost": 1533.4782980973243,
+                            "total_fees": 0,
+                            "orders": []
+                        },
+                        "CHZ": {
+                            "amount": 4180.6,
+                            "mean_price": 0.12205562463622263,
+                            "subtotal_cost": 510.2657443541924,
+                            "total_cost": 510.2657443541924,
+                            "total_fees": 0,
+                            "orders": []
+                        },
+                        "XYO": {
+                            "amount": 47860.8,
+                            "mean_price": 0.02437868916256546,
+                            "subtotal_cost": 1166.783566271713,
+                            "total_cost": 1166.783566271713,
+                            "total_fees": 0,
+                            "orders": []
+                        },
+                        "BTC": {
+                            "amount": 0.04241941,
+                            "mean_price": 98440.74784567328,
+                            "subtotal_cost": 4175.798443572231,
+                            "total_cost": 4175.798443572231,
+                            "total_fees": 0,
+                            "orders": []
+                        },
+                        "AMP": {
+                            "amount": 602284.0,
+                            "mean_price": 0.010568494858952497,
+                            "subtotal_cost": 6365.235357629345,
+                            "total_cost": 6365.235357629345,
+                            "total_fees": 0,
+                            "orders": []
+                        }
+                    }
+                }
+            }
         }
     },
     "estimated_prices": {},
