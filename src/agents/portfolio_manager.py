@@ -4,9 +4,15 @@ from rich.table import Table, box
 from datetime import datetime
 from pathlib import Path
 import json
+from dotenv import load_dotenv
+from json import dumps
 from enum import Enum
 from src.agents.data_analyst import BTC, ETH
 import src.agents.data_analyst as dt
+from coinbase.rest import RESTClient
+import os
+from rich.console import Console
+console = Console()  # Create console instance for colored output
 
 from src.config.models.portfolio import (
     Portfolio, Position, OrderDetails, Exchange, 
@@ -62,8 +68,8 @@ class PortfolioPrinter:
                 table.add_column("Amount", justify="right", style="cyan")
                 table.add_column("Cost", justify="right", style="cyan")
                 table.add_column("Total Cost", justify="right", style="cyan")
-                table.add_column("Estimated Price", justify="right", style="cyan")
-                table.add_column("Total Estimated", justify="right", style="cyan")
+                table.add_column("Value", justify="right", style="cyan")
+                table.add_column("Total Value", justify="right", style="cyan")
                 table.add_column("PNL", justify="right", style="cyan")
                 table.add_column("PNL %", justify="right", style="cyan")
                 
@@ -158,7 +164,7 @@ class PortfolioPrinter:
                 order['pair'],
                 f"[{order_style}]{order['order_type']}[/]",
                 order['last_filled'],
-                f"{order['amount']:.8f}",
+                f"x{order['amount']:.6f}",
                 f"{currency}{order['execution_price']:,.2f}",
                 f"{currency}{order['subtotal']:,.2f}",
                 f"{currency}{order['fee']:,.2f}",
@@ -177,6 +183,7 @@ class PortfolioManagerAgent:
         self._load_portfolio()  # Load portfolio immediately
         self._validate_portfolio_structure()  # Ensure all required fields exist
         self._initialize_virtual_exchange()  # Initialize virtual exchange if it doesn't exist
+        self.coinbase_client = None  # Initialize Coinbase client as None (optional)
 
     def _load_portfolio(self, path: Optional[str] = None) -> Portfolio:
         """Load portfolio from file, handling empty or invalid files"""
@@ -412,3 +419,97 @@ class PortfolioManagerAgent:
 
         if not order_found:
             raise ValueError(f"Order {order_id} not found in {exchange}/{account_id}")
+
+    def init_coinbase_client(self) -> None:
+        """Init coinbase client"""
+        load_dotenv()
+        api_key= os.getenv('COINBASE_API_KEY', '')
+        api_secret= os.getenv('COINBASE_API_SECRET', '')
+        client = RESTClient(api_key=api_key, api_secret=api_secret)
+        self.coinbase_client = client
+
+    def init_coinbase_client(self) -> None:
+        """Initialize Coinbase client using environment variables."""
+        load_dotenv()
+        api_key = os.getenv('COINBASE_API_KEY', '')
+        api_secret = os.getenv('COINBASE_API_SECRET', '')
+        
+        if not api_key or not api_secret:
+            self.console.print("[yellow]Coinbase API key and secret not found in environment variables. Skipping Coinbase sync.[/]")
+            return
+        
+        self.coinbase_client = RESTClient(api_key=api_key, api_secret=api_secret)
+        console.print("[green]Coinbase client initialized successfully![/]")
+
+    def sync_coinbase(self):
+        """Sync Coinbase portfolio data with the portfolio."""
+        if not self.coinbase_client:
+            console.print("[yellow]Coinbase client not initialized...")
+            self.init_coinbase_client() 
+        
+        console.print("[bold]Syncing Coinbase data...[/]")
+        
+        try:
+            response = self.coinbase_client.get_portfolios()
+            print(response)
+            
+            if not response or not hasattr(response, 'portfolios'):
+                console.print("[yellow]No portfolios found in Coinbase response.[/]")
+                return
+            
+            portfolios = response["portfolios"]
+            coinbase_exchange = self._create_exchange("coinbase")
+            for portfolio in portfolios:
+                portfolio_id = portfolio.uuid  # Use 'uuid' as the portfolio ID
+                portfolio_name = portfolio.name
+                portfolio_type   = portfolio.type
+                print(portfolio_id,portfolio_name,portfolio_type)
+                if not portfolio_id or not portfolio_name:
+                    console.print(f"[yellow]Skipping invalid portfolio: {portfolio}[/]")
+                    continue
+                
+                # Fetch balances for the portfolio
+                balances_response = self.coinbase_client.get_portfolio_balances(portfolio_id)
+                
+                # Check if the balances response is valid
+                if not balances_response or not hasattr(balances_response, 'balances'):
+                    console.print(f"[yellow]No balances found for portfolio {portfolio_name}.[/]")
+                    continue
+                
+                balances = balances_response.balances
+                
+                coinbase_account = self._create_account(
+                    exchange_name="coinbase",
+                    account_id=portfolio_id,
+                    account_name=portfolio_name,
+                    account_type=AccountType.SPOT
+                )
+                
+                for balance in balances:
+                    currency = balance.currency  # Access the 'currency' attribute directly
+                    amount = float(balance.amount)  # Access the 'amount' attribute directly
+                    
+                    if not currency:
+                        console.print(f"[yellow]Skipping invalid balance: {balance}[/]")
+                        continue
+                    
+                    # Update the position for the currency
+                    symbol = f"{currency}/USD"  # Assuming USD as the quote currency
+                    if symbol in coinbase_account.positions:
+                        position = coinbase_account.positions[symbol]
+                        position.amount = amount
+                    else:
+                        coinbase_account.positions[symbol] = Position(
+                            amount=amount,
+                            mean_price=0,  # Set to 0 for now (can be updated later)
+                            estimated_cost_usd=0,
+                            estimated_value_usd=0,
+                            orders=[]
+                        )
+            
+            # Save the updated portfolio
+            self._save_portfolio()
+            console.print("[green]Coinbase data synced successfully![/]")
+        
+        except Exception as e:
+            console.print(f"[red]Error syncing Coinbase data: {e}[/]")

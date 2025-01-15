@@ -115,6 +115,10 @@
                     }
                 }
             }
+        },
+        "coinbase": {
+            "name": "coinbase",
+            "accounts": {}
         }
     },
     "estimated_prices": {},

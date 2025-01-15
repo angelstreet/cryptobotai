@@ -70,13 +70,13 @@ def coingecko_get_price(crypto_ids: List[str], currency: str = "usd") -> Dict[st
                 'exchange': Exchange.COINGECKO.value,
                 'symbol': f"{crypto_id}/{currency}",
             }
-        print(data)
-        print_friendly_table(data, "CoinGecko Simple Price")  # Debugging: Print the raw API response
+
+        #print_friendly_table(data, "CoinGecko Simple Price")  # Debugging: Print the raw API response
         return results
     except Exception as e:
         print(f"Error fetching CoinGecko price: {e}")
         return None
-        
+
 def coingecko_get_historical_data(crypto_id: str, currency: str = "usd", timeframe: TimeFrame = TimeFrame.DAY) -> Dict[str, Any]:
     """
     Fetch historical price data from CoinGecko.
