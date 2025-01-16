@@ -73,12 +73,12 @@ class PortfolioPrinter:
                         symbol,
                         f"{pos['amount']:.4f}",
                         f"{currency}{pos['mean_price']:,.2f}",
-                        f"{currency}{pos['value']:,.2f}",
+                        f"{currency}{pos['total_value']:,.2f}",
                         f"[green]{currency}{pos['pnl']:,.2f}[/]" if pos['pnl'] >= 0 else f"[red]{currency}{pos['pnl']:,.2f}[/]",
                         f"[green]{pos['pnl_percentage']:+.2f}%[/]" if pos['pnl'] >= 0 else f"[red]{pos['pnl_percentage']:+.2f}%[/]"
                     )
 
-                    account_value += pos['value']
+                    account_value += pos['total_value']
                     account_cost += pos['amount'] * pos['mean_price']
                     account_pnl += pos['pnl']
 
@@ -296,8 +296,8 @@ class PortfolioManagerAgent(Agent):
 
                     # Update position with current price
                     position['current_price'] = current_price
-                    position['value'] = position['amount'] * current_price
-                    position['pnl'] = position['value'] - (position['amount'] * position['mean_price'])
+                    position['total_value'] = position['amount'] * current_price
+                    position['pnl'] = position['total_value'] - (position['amount'] * position['mean_price'])
                     position['pnl_percentage'] = (position['pnl'] / (position['amount'] * position['mean_price'])) * 100
 
         return portfolio_dict
@@ -556,10 +556,10 @@ class PortfolioManagerAgent(Agent):
                     
                     # Extract the cost basis value from the dictionary
                     cost_basis = position.cost_basis
-                    if isinstance(cost_basis, dict) and 'value' in cost_basis:
-                        cost_basis_value = float(cost_basis['value'])
+                    if isinstance(cost_basis, dict) and 'total_value' in cost_basis:
+                        cost_basis_value = float(cost_basis['total_value'])
                     else:
-                        cost_basis_value = 0.0  # Default to 0 if cost_basis is not a dictionary or missing 'value'
+                        cost_basis_value = 0.0  # Default to 0 if cost_basis is not a dictionary or missing 'total_value'
                     
                     # Convert cost basis to USD if it's in EUR
                     if cost_basis.get('currency') == "EUR":

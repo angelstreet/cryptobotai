@@ -48,7 +48,7 @@ class CryptoAgency:
         portfolio_manager = PortfolioManagerAgent(config=self.config)
         data_analyst = DataAnalystAgent(config=self.config)
         # kickoff workflow
-        #receptionnist_flow(receptionist,portfolio_manager)
+        receptionnist_flow(receptionist,portfolio_manager)
         #portfolio_manager.add_transaction("virtual","virtual-1","BTC/USDT",1,99000,Action.BUY)
         #portfolio_manager.add_transaction("virtual","virtual-1","ETH/USDT",1,3276.46,Action.BUY) 
         #portfolio_manager.add_transaction("virtual","virtual-1","BTC/USDT",0.1,80000,Action.SELL) 
@@ -56,7 +56,7 @@ class CryptoAgency:
         #print_friendly_table(dt.coingecko_get_price([BTC,ETH]), "CoinGecko Simple Price")
         #portfolio_manager.sync_coinbase()
         #portfolio_manager.show_portfolio()
-        analyze_portfolio_task(portfolio_manager)
+        #analyze_portfolio_task(portfolio_manager)
         #portfolio_manager.show_orders()
         #data = dt.coingecko_get_historical_data(BTC,"USD",TimeFrame.DAY,)
         #dt.print_coingecko_historical_table(BTC,"USD",TimeFrame.DAY,data)

@@ -13,14 +13,14 @@ def AnalyzePortfolioTask(portfolio_manager: PortfolioManagerAgent) -> Task:
         Consider the following:
         1. Overall portfolio performance.
         2. Diversification across assets.
-        3. Profit/Loss for each asset.
+        3. Use Profit/Loss to identify the best performing assets and the worst performing assets.
         4. Suggestions for improvement (e.g., rebalancing, adding new assets).
         5. Any risks or opportunities you notice.
 
         Provide your analysis in a clear and concise manner.
         """
-        description ="Say hello"
-        expected_output ="be original and creative"
+        #description ="Say hello"
+        #expected_output ="be original and creative"
         agent = portfolio_manager
         tools = []
         return Task(description=description, expected_output=expected_output, agent=agent, tools=tools)

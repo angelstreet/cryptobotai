@@ -114,7 +114,7 @@ def coingecko_get_historical_data(crypto_id: str, currency: str = "usd", timefra
                     'timestamp': ts,
                     'date': datetime.fromtimestamp(ts / 1000).strftime('%Y-%m-%d'),
                     'time': datetime.fromtimestamp(ts / 1000).strftime('%H:%M:%S'),
-                    'value': value
+                    'total_value': value
                 }
                 for ts, value in data.get('prices', [])
             ],
@@ -122,7 +122,7 @@ def coingecko_get_historical_data(crypto_id: str, currency: str = "usd", timefra
                 {
                     'timestamp': ts,
                     'date': datetime.fromtimestamp(ts / 1000).strftime('%Y-%m-%d'),
-                    'value': value
+                    'total_value': value
                 }
                 for ts, value in data.get('market_caps', [])
             ],
@@ -130,7 +130,7 @@ def coingecko_get_historical_data(crypto_id: str, currency: str = "usd", timefra
                 {
                     'timestamp': ts,
                     'date': datetime.fromtimestamp(ts / 1000).strftime('%Y-%m-%d'),
-                    'value': value
+                    'total_value': value
                 }
                 for ts, value in data.get('total_volumes', [])
             ],
@@ -173,13 +173,13 @@ def print_coingecko_historical_table(crypto_id: str,currency: str ,timeframe: Ti
     volumes = data.get('total_volumes', [])
     market_caps = data.get('market_caps', [])
     for i in range(1, len(prices)):
-        prev_price = prices[i - 1]['value']
-        current_price = prices[i]['value']
+        prev_price = prices[i - 1]['total_value']
+        current_price = prices[i]['total_value']
         time = prices[i]['time']
         price = f"${current_price:,.2f}"
         change = f"{((current_price - prev_price) / prev_price * 100):+.2f}%"
-        volume = f"${volumes[i]['value']}"
-        market_cap = f"${market_caps[i]['value']}"
+        volume = f"${volumes[i]['total_value']}"
+        market_cap = f"${market_caps[i]['total_value']}"
         change_style = "red" if "-" in change else "green"
         table.add_row(time, price, change, volume, market_cap, style=change_style)
     console.print(table)
@@ -194,7 +194,7 @@ def plot_plotext_chart(crypto_id: str,currency: str , data: Dict[str, Any]):
 
     # Extract timestamps and prices
     timestamps = [price['timestamp'] / 1000 for price in data['prices']]
-    prices = [price['value'] for price in data['prices']]
+    prices = [price['total_value'] for price in data['prices']]
     dates = [datetime.fromtimestamp(ts).strftime('%d/%m/%Y') for ts in timestamps]
     plt.clear_figure()
 
@@ -223,7 +223,7 @@ def coingecko_get_currency_rates() -> Dict[str, Any]:
         response.raise_for_status()
         data = response.json()
         
-        eur_usd_rate = data['rates']['usd']['value'] / data['rates']['eur']['value']
+        eur_usd_rate = data['rates']['usd']['total_value'] / data['rates']['eur']['total_value']
         usd_eur_rate = 1 / eur_usd_rate
         
         _currency_rates = {
