@@ -14,7 +14,6 @@ import os
 from rich.console import Console
 console = Console()  # Create console instance for colored output
 from pydantic import Field, ConfigDict
-from agentops import track_agent
 
 from src.config.models.portfolio import (
     Portfolio, Position, OrderDetails, Exchange, 
@@ -155,7 +154,6 @@ class PortfolioPrinter:
         self.console.print("\n[dim]─── Orders Overview ───[/]")
         self.console.print(table)
 
-@track_agent(name='PortfolioManagerAgent')
 class PortfolioManagerAgent(Agent):
     """Agent responsible for portfolio management"""
     # Pydantic configuration
