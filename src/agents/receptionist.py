@@ -3,7 +3,7 @@ from typing import Dict, Any, List
 from crewai import Agent
 import readline
 from rich.console import Console
-console = Console()  # Create console instance for colored output
+console = Console() 
 # Autocomplete function
 def completer(text, state):
     options = [word for word in VALID_COMMANDS if word.startswith(text)]

@@ -2,12 +2,12 @@
 from typing import List, Dict, Any
 from crewai import Flow, Agent
 from src.agents.receptionist import ReceptionistAgent
+from src.agents.portfolio_manager import PortfolioManagerAgent
 
 class ReceptionistFlow(Flow):
     """Routing workflow for receptionist"""
     
-    def __init__(self, config, receptionist: ReceptionistAgent, portfolio_manager: Agent):
-        self.config = config
+    def __init__(self, receptionist: ReceptionistAgent, portfolio_manager: PortfolioManagerAgent):
         self.receptionist = receptionist
         self.portfolio_manager = portfolio_manager
         super().__init__()

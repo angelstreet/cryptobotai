@@ -5,7 +5,7 @@ from datetime import datetime
 from pathlib import Path
 import json
 from dotenv import load_dotenv
-from json import dumps
+from crewai import Agent
 from src.config.models.portfolio import AccountType, Action
 from src.agents.data_analyst import BTC, ETH
 import src.agents.data_analyst as dt
@@ -13,6 +13,8 @@ from coinbase.rest import RESTClient
 import os
 from rich.console import Console
 console = Console()  # Create console instance for colored output
+from pydantic import Field, ConfigDict
+from agentops import track_agent
 
 from src.config.models.portfolio import (
     Portfolio, Position, OrderDetails, Exchange, 
@@ -30,100 +32,69 @@ class PortfolioPrinter:
             f"on {exchange} ({account})"
         )
 
-    def print_portfolio(self, portfolio: Dict, coingecko_prices: Dict):
+    def get_portfolio(self, portfolio: Dict, coingecko_prices: Dict):
+        self.console.print("\n[dim]─── Portfolio Overview ───[/]")
+
+    def print_portfolio(self, portfolio: Dict):
+        """
+        Print the portfolio overview using rich.
+        
+        Args:
+            portfolio (Dict): Updated portfolio data.
+        """
         self.console.print("\n[dim]─── Portfolio Overview ───[/]")
         
         currency = portfolio.get('display_currency', '$')
         total_portfolio_value = 0
-        total_estimated_value = 0
-        total_cost = 0  # New variable to track total cost
-        total_pnl = 0  # New variable to track total PNL
-        total_worth = 0  # New variable to track total estimated price
-        
-        # Mapping from portfolio symbols to CoinGecko IDs
-        symbol_to_coingecko = {
-            "BTC": "bitcoin",
-            "ETH": "ethereum",
-            "SOL": "solana",
-            "XRP": "xrp",
-            "DOGE": "dogecoin",
-            "USDT": "tether",
-            "USDC": "usd-coin",
-            "BTC/USDT": "bitcoin",
-            "ETH/USDT": "ethereum",
-            "SOL/USDT": "solana",
-            "XRP/USDT": "xrp",
-            "DOGE/USDT": "dogecoin",
-        }
-        
+        total_cost = 0
+        total_pnl = 0
+
         for exchange_name, exchange in portfolio['exchanges'].items():
             self.console.print(f"[bold]{exchange_name}[/]")
-         
+            
             if not exchange['accounts']:
                 print("Empty portfolio...continue")
                 continue
-            account = list(exchange['accounts'].values())[0]
-            account_id = account['account_id']
-            positions = account['positions']
-            if not positions:
-                print(f"Empty portfolio {account_id}...continue")
-                continue
-            # Print portfolio
+
             for account_id, account in exchange['accounts'].items():
                 account_value = 0
-                account_cost = 0  
-                account_pnl = 0 
-                account_worth = 0
-                
+                account_cost = 0
+                account_pnl = 0
+
                 table = Table(show_header=True, header_style="bold magenta", box=box.ROUNDED)
                 table.add_column(f"{account['name']}", style="dim", justify="left")
                 table.add_column("Amount", justify="right", style="cyan")
                 table.add_column("Cost", justify="right", style="cyan")
-                table.add_column("Total Cost", justify="right", style="cyan")
                 table.add_column("Value", justify="right", style="cyan")
-                table.add_column("Total Worth", justify="right", style="cyan")
                 table.add_column("PNL", justify="right", style="cyan")
                 table.add_column("PNL %", justify="right", style="cyan")
-                
-                for symbol, pos in account['positions'].items():   
-                    coingecko_id = symbol_to_coingecko.get(symbol, symbol.lower())
-                    current_price = coingecko_prices.get(coingecko_id, {}).get('price', pos['mean_price'])
-                    value = pos['amount'] * current_price
-                    cost = pos['amount'] * pos['mean_price']
-                    pnl = value - cost  # Calculate PNL
-                    pnl_percentage = (pnl / cost) * 100  # Calculate PNL Percentage
-                    
-                    account_value += value
-                    account_cost += cost
-                    account_pnl += pnl
-                    account_worth += current_price  # Add up estimated prices
-                    total_portfolio_value += value
-                    total_cost += cost
-                    total_pnl += pnl
-                    total_worth += current_price  # Add up estimated prices
-                    
+
+                for symbol, pos in account['positions'].items():
                     table.add_row(
                         symbol,
                         f"{pos['amount']:.4f}",
                         f"{currency}{pos['mean_price']:,.2f}",
-                        f"{currency}{cost:,.2f}",
-                        f"{currency}{current_price:,.2f}",  # Estimated Price from CoinGecko
-                        f"{currency}{value:,.2f}",
-                        f"[green]{currency}{pnl:,.2f}[/]" if pnl >= 0 else f"[red]{currency}{pnl:,.2f}[/]",
-                        f"[green]{pnl_percentage:+.2f}%[/]" if pnl >= 0 else f"[red]{pnl_percentage:+.2f}%[/]"
+                        f"{currency}{pos['value']:,.2f}",
+                        f"[green]{currency}{pos['pnl']:,.2f}[/]" if pos['pnl'] >= 0 else f"[red]{currency}{pos['pnl']:,.2f}[/]",
+                        f"[green]{pos['pnl_percentage']:+.2f}%[/]" if pos['pnl'] >= 0 else f"[red]{pos['pnl_percentage']:+.2f}%[/]"
                     )
-                
-                total_estimated_value += account_value
+
+                    account_value += pos['value']
+                    account_cost += pos['amount'] * pos['mean_price']
+                    account_pnl += pos['pnl']
+
+                total_portfolio_value += account_value
+                total_cost += account_cost
+                total_pnl += account_pnl
+
                 table.add_row(
                     "[bold]Total[/]", "", "",
-                    f"[bold]{currency}{account_cost:,.2f}[/]",  # Total Cost
-                    f"[bold]{currency}{account_worth:,.2f}[/]",  # Estimated Price Total (sum of rows)
-                    f"[bold]{currency}{account_value:,.2f}[/]",  # Total Estimated
-                    f"[green]{currency}{account_pnl:,.2f}[/]" if account_pnl >= 0 else f"[red]{currency}{account_pnl:,.2f}[/]",  # PNL
-                    f"[green]{(account_pnl / account_cost) * 100:+.2f}%[/]" if account_pnl >= 0 else f"[red]{(account_pnl / account_cost) * 100:+.2f}%[/]"  # PNL %
+                    f"[bold]{currency}{account_value:,.2f}[/]",
+                    f"[green]{currency}{account_pnl:,.2f}[/]" if account_pnl >= 0 else f"[red]{currency}{account_pnl:,.2f}[/]",
+                    f"[green]{(account_pnl / account_cost) * 100:+.2f}%[/]" if account_pnl >= 0 else f"[red]{(account_pnl / account_cost) * 100:+.2f}%[/]"
                 )
                 self.console.print(table)
-    
+
     def print_orders(self, portfolio: Dict, exchange: Optional[str] = None, 
                     account: Optional[str] = None, order_id: Optional[str] = None):
         table = Table(show_edge=True, box=None)
@@ -184,17 +155,35 @@ class PortfolioPrinter:
         self.console.print("\n[dim]─── Orders Overview ───[/]")
         self.console.print(table)
 
-class PortfolioManagerAgent:
+@track_agent(name='PortfolioManagerAgent')
+class PortfolioManagerAgent(Agent):
     """Agent responsible for portfolio management"""
-    def __init__(self, config):
+    # Pydantic configuration
+    model_config = ConfigDict(arbitrary_types_allowed=True)
+    # Declare fields using Pydantic's Field
+    config: Dict = Field(default_factory=dict)
+    portfolio_path: str = Field(default=str(Path(__file__).parent.parent / 'config' / 'data' / 'portfolio.json'))
+    printer: PortfolioPrinter = Field(default_factory=lambda: PortfolioPrinter(Console()))
+    portfolio: Portfolio = Field(default_factory=Portfolio)
+    coinbase_client: Optional[RESTClient] = Field(default=None)
+
+    def __init__(self, config: Dict, **kwargs):
+        super().__init__(
+            role="Portfolio Manager and Risk Analyst",
+            goal="Analyze portfolio performance, risk, and provide investment recommendations",
+            backstory="""You are an experienced portfolio manager and risk analyst with expertise in 
+            cryptocurrency markets. Your job is to analyze portfolio composition, assess risk levels, 
+            evaluate diversification, and provide actionable recommendations.""",
+            allow_delegation=False,
+            llm=config.llm,
+            verbose=True,
+            tools=[],
+        )
         self.config = config
-        self.portfolio_path = str(Path(__file__).parent.parent / 'config' / 'data' / 'portfolio.json')
-        self.printer = PortfolioPrinter(Console())
         self._load_portfolio()  # Load portfolio immediately
         self._validate_portfolio_structure()  # Ensure all required fields exist
-        self._initialize_virtual_exchange()  # Initialize virtual exchange if it doesn't exist
-        self.coinbase_client = None  # Initialize Coinbase client as None (optional)
-
+        self._initialize_virtual_exchange()  # Initialize virtual exchange if it doesn't exist        self.session = agentops.start_session(name=self.role)
+            
     def _load_portfolio(self, path: Optional[str] = None) -> Portfolio:
         """Load portfolio from file, handling empty or invalid files"""
         if path:
@@ -269,18 +258,64 @@ class PortfolioManagerAgent:
             self._save_portfolio()
         return exchange.accounts[account_id]
 
-    def show_portfolio(self):
-        """Display portfolio overview"""
+    def update_portfolio(self) -> Dict:
+        """
+        Update the portfolio with the latest CoinGecko prices and recalculate metrics.
+        
+        Args:
+            coingecko_prices (Dict): Latest prices from CoinGecko.
+        
+        Returns:
+            Dict: Updated portfolio data.
+        """
         portfolio_dict = self.portfolio.dict()
-        # Check if the portfolio is empty
-        if not portfolio_dict.get('exchanges'):
-            self.printer.console.print("[yellow]Portfolio is empty. No data to display.[/]")
-            return
+        coingecko_prices = dt.coingecko_get_price(
+            crypto_ids=[BTC, ETH], 
+            currency=self.config.display_currency
+        )
+        # Mapping from portfolio symbols to CoinGecko IDs
+        symbol_to_coingecko = {
+            "BTC": "bitcoin",
+            "ETH": "ethereum",
+            "SOL": "solana",
+            "XRP": "xrp",
+            "DOGE": "dogecoin",
+            "USDT": "tether",
+            "USDC": "usd-coin",
+            "BTC/USDT": "bitcoin",
+            "ETH/USDT": "ethereum",
+            "SOL/USDT": "solana",
+            "XRP/USDT": "xrp",
+            "DOGE/USDT": "dogecoin",
+        }
 
-        coingecko_prices = dt.coingecko_get_price(crypto_ids=[BTC, ETH], currency=self.config.display_currency)
-        self.printer.print_portfolio(portfolio_dict, coingecko_prices)
+        # Update portfolio with latest prices and recalculate metrics
+        for exchange_name, exchange in portfolio_dict['exchanges'].items():
+            for account_id, account in exchange['accounts'].items():
+                for symbol, position in account['positions'].items():
+                    coingecko_id = symbol_to_coingecko.get(symbol, symbol.lower())
+                    current_price = coingecko_prices.get(coingecko_id, {}).get('price', position['mean_price'])
 
-    def show_orders(self, exchange: Optional[str] = None, 
+                    # Update position with current price
+                    position['current_price'] = current_price
+                    position['value'] = position['amount'] * current_price
+                    position['pnl'] = position['value'] - (position['amount'] * position['mean_price'])
+                    position['pnl_percentage'] = (position['pnl'] / (position['amount'] * position['mean_price'])) * 100
+
+        return portfolio_dict
+
+    def show_portfolio(self) -> Dict:
+        """
+        Fetch the latest portfolio data, update it with CoinGecko prices, and display it.
+        
+        Returns:
+            Dict: Updated portfolio data in JSON format.
+        """
+        updated_portfolio = self.update_portfolio()
+        self.printer.print_portfolio(updated_portfolio)
+        return updated_portfolio
+
+    def show_orders(self, exchange:  Optional[str] = None, 
                    account: Optional[str] = None, order_id: Optional[str] = None):
         portfolio_dict = self.portfolio.dict()
         self.printer.print_orders(portfolio_dict, exchange, account, order_id)

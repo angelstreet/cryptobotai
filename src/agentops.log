@@ -1,0 +1,7 @@
+2025-01-16 20:27:31,122 - INFO - Session Replay: https://app.agentops.ai/drilldown?session_id=4e7455a2-1e7b-4d03-9307-aa43b7e34595
+2025-01-16 20:27:31,154 - WARNING - Failed to track an agent with the @track_agent decorator.
+2025-01-16 20:27:31,659 - WARNING - Failed to track an agent with the @track_agent decorator.
+2025-01-16 20:27:48,830 - WARNING - Failed to track an agent None with the @track_agent decorator.
+2025-01-16 20:27:48,831 - WARNING - Failed to track an agent None with the @track_agent decorator.
+2025-01-16 20:27:49,878 - INFO - Session Stats - Duration: 19.0s | Cost: $0.00 | LLMs: 1 | Tools: 0 | Actions: 0 | Errors: 0
+2025-01-16 20:27:49,879 - INFO - Session Replay: https://app.agentops.ai/drilldown?session_id=4e7455a2-1e7b-4d03-9307-aa43b7e34595
